@@ -1,0 +1,6 @@
+# Append to ~/.ssh/config on your Mac:
+Host rivanna
+  HostName login.hpc.virginia.edu
+  User eyu8ps
+  ForwardX11 yes
+  ServerAliveInterval 60

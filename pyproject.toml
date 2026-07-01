@@ -1,0 +1,68 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hbac"
+version = "0.1.0"
+description = "Hierarchical Budgeted Agent Controller - evaluation substrate"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic>=0.40.0",
+    "datasets>=2.19.0",
+    "docker>=7.0.0",
+    "httpx>=0.27.0",
+    "numpy>=1.26.0",
+    "openai>=1.50.0",
+    "pydantic>=2.8.0",
+    "pydantic-settings>=2.4.0",
+    "python-dotenv>=1.0.0",
+    "swebench>=2.1.0",
+    "tiktoken>=0.7.0",
+    "typer>=0.12.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "ruff>=0.6.0",
+]
+gpu = [
+    "torch>=2.2.0",
+    "transformers>=4.40.0",
+    "trl>=0.9.0",
+    "accelerate>=0.30.0",
+    "peft>=0.11.0",
+]
+
+[project.scripts]
+hbac-run = "hbac.scripts.run_baseline:app"
+hbac-collect-oracles = "hbac.scripts.collect_oracles:app"
+hbac-export-sft = "hbac.scripts.export_sft:app"
+hbac-seed-oracles = "hbac.scripts.seed_oracles:app"
+hbac-validate-reward = "hbac.scripts.validate_reward:app"
+hbac-train-variant-a = "hbac.scripts.train_variant_a:app"
+hbac-sync-freellmapi = "hbac.scripts.sync_freellmapi:app"
+hbac-ablate-kl = "hbac.scripts.ablate_kl:app"
+hbac-eval-variant-a = "hbac.scripts.eval_variant_a:app"
+hbac-check-go-no-go = "hbac.scripts.check_go_no_go:app"
+hbac-train-variant-b = "hbac.scripts.train_variant_b:app"
+hbac-train-variant-a-l1 = "hbac.scripts.train_variant_a_l1:app"
+hbac-eval-batch = "hbac.scripts.eval_batch:app"
+hbac-train-llm-grpo = "hbac.scripts.train_llm_grpo:app"
+hbac-run-phase3 = "hbac.scripts.run_phase3:app"
+hbac-check-phase3 = "hbac.scripts.check_phase3:app"
+hbac-eval-compose = "hbac.scripts.eval_compose:app"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["hbac*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"

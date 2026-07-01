@@ -23,6 +23,7 @@ from hbac.training.reward import TaskControllerReward
 app = typer.Typer(help="Live-LLM compose eval: uniform vs CLEAR vs HBAC")
 
 STUB_BENCHMARKS = frozenset({"tau_bench", "toolbench", "mock", "swe_bench"})
+LIVE_MIN_PER_TASK = 400
 
 
 def _filter_batches(
@@ -30,6 +31,7 @@ def _filter_batches(
     *,
     benchmarks: set[str] | None,
     max_batches: int | None,
+    live: bool = True,
 ) -> list[TrainingBatch]:
     out: list[TrainingBatch] = []
     for batch in batches:
@@ -37,11 +39,14 @@ def _filter_batches(
         if not tasks:
             continue
         oracle_sum = sum(t.oracle_tokens for t in tasks) or 1
+        n = len(tasks)
+        frac_budget = int(oracle_sum * batch.budget_fraction)
+        floor = n * (LIVE_MIN_PER_TASK if live else 40)
         out.append(
             TrainingBatch(
                 batch_id=batch.batch_id,
                 tasks=tasks,
-                global_budget=max(len(tasks) * 40, int(oracle_sum * batch.budget_fraction)),
+                global_budget=max(floor, frac_budget),
                 oracle_token_sum=oracle_sum,
                 budget_fraction=batch.budget_fraction,
             )

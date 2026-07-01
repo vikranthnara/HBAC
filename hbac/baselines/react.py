@@ -27,6 +27,33 @@ Workflow:
 4. submit: finalize when tests pass
 """
 
+TOOLBENCH_SYSTEM_PROMPT = """You are a tool-using agent calling external APIs.
+Respond with JSON only (no markdown):
+{"thought": "...", "tool_name": "list_apis|call_api|submit", "tool_input": "..."}
+
+Workflow:
+1. list_apis — discover available APIs
+2. call_api — invoke an API with parameters
+3. submit — send the final answer string when you have it
+"""
+
+TAU_SYSTEM_PROMPT = """You are a customer-service agent helping users with bookings.
+Respond with JSON only (no markdown):
+{"thought": "...", "tool_name": "lookup|message_user|submit", "tool_input": "..."}
+
+Workflow:
+1. lookup — fetch information (flights, hotels, seats)
+2. message_user — ask the user to confirm
+3. submit — finalize with the confirmation token when the user agrees
+"""
+
+MOCK_SYSTEM_PROMPT = """You are a simple task agent.
+Respond with JSON only (no markdown):
+{"thought": "...", "tool_name": "bash|submit", "tool_input": "..."}
+
+Use bash to explore, then submit with the exact final answer.
+"""
+
 
 class ReActRunner(BaseRunner):
     name = "react"
@@ -45,4 +72,10 @@ class ReActRunner(BaseRunner):
     def system_prompt_for_benchmark(benchmark: str) -> str:
         if benchmark == "livecodebench":
             return LCB_SYSTEM_PROMPT
+        if benchmark == "toolbench":
+            return TOOLBENCH_SYSTEM_PROMPT
+        if benchmark == "tau_bench":
+            return TAU_SYSTEM_PROMPT
+        if benchmark == "mock":
+            return MOCK_SYSTEM_PROMPT
         return SWE_SYSTEM_PROMPT

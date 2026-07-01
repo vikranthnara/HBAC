@@ -7,6 +7,7 @@ from pathlib import Path
 
 from hbac.baselines.base import RunnerConfig
 from hbac.baselines.controller import ControllerRunner
+from hbac.baselines.react import ReActRunner
 from hbac.core.config import LLMConfig
 from hbac.core.llm import LLMBackend, LLMResponse
 from hbac.gates.deterministic_episodes import DETERMINISTIC_EPISODES, make_env
@@ -72,13 +73,20 @@ def rollout_task(
 ) -> TaskRolloutResult:
     ep = _episode_for_benchmark(task.benchmark)
     env = make_env_for_task(task.benchmark, task.task_id, budget)
+    is_live = llm is not None and type(llm).__name__ != "ScriptedLLM"
     backend = llm or ScriptedLLM(ep.responses)
+    prompt = ReActRunner.system_prompt_for_benchmark(task.benchmark)
     runner = ControllerRunner(
         backend,
         controller,
-        RunnerConfig(max_steps=10, max_tokens_per_step=256, output_dir=Path("/tmp/hbac_batch")),
+        RunnerConfig(
+            max_steps=12 if is_live else 10,
+            max_tokens_per_step=512 if is_live else 256,
+            output_dir=Path("/tmp/hbac_batch"),
+        ),
+        stop_threshold=0.99 if is_live else 0.5,
     )
-    traj = runner.run_episode(env, ep.system_prompt, task.task_id)
+    traj = runner.run_episode(env, prompt, task.task_id)
     reward = reward_fn.terminal(
         success=traj.success,
         tokens_used=traj.total_tokens,

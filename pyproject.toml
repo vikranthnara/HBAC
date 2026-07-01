@@ -54,6 +54,7 @@ hbac-train-llm-grpo = "hbac.scripts.train_llm_grpo:app"
 hbac-run-phase3 = "hbac.scripts.run_phase3:app"
 hbac-check-phase3 = "hbac.scripts.check_phase3:app"
 hbac-eval-compose = "hbac.scripts.eval_compose:app"
+hbac-eval-compose-live = "hbac.scripts.eval_compose_live:app"
 
 [tool.setuptools.packages.find]
 where = ["."]

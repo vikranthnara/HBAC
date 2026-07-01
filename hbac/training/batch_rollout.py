@@ -67,12 +67,14 @@ def rollout_task(
     budget: int,
     controller: MonolithicController,
     reward_fn: TaskControllerReward,
+    *,
+    llm: LLMBackend | None = None,
 ) -> TaskRolloutResult:
     ep = _episode_for_benchmark(task.benchmark)
     env = make_env_for_task(task.benchmark, task.task_id, budget)
-    llm = ScriptedLLM(ep.responses)
+    backend = llm or ScriptedLLM(ep.responses)
     runner = ControllerRunner(
-        llm,
+        backend,
         controller,
         RunnerConfig(max_steps=10, max_tokens_per_step=256, output_dir=Path("/tmp/hbac_batch")),
     )

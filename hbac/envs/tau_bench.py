@@ -15,6 +15,16 @@ class TauBenchEnv(BaseAgentEnv):
             "user_goal": "flight_change",
             "answer": "confirmed",
         },
+        "tau-local-2": {
+            "query": "Help the user cancel their hotel reservation.",
+            "user_goal": "hotel_cancel",
+            "answer": "cancelled",
+        },
+        "tau-local-3": {
+            "query": "Help the user upgrade their seat on AA200.",
+            "user_goal": "seat_upgrade",
+            "answer": "upgraded",
+        },
     }
 
     def __init__(self, budget_tokens: int = 50_000, lambda_penalty: float = 0.001) -> None:
@@ -62,7 +72,12 @@ class TauBenchEnv(BaseAgentEnv):
             feedback = "Task submitted."
         elif tool == "lookup":
             self._lookup_done = True
-            feedback = "Flight AA100 available tomorrow 9am."
+            if self._task_id == "tau-local-2":
+                feedback = "Hotel reservation H-4421 found; cancellable until tonight."
+            elif self._task_id == "tau-local-3":
+                feedback = "Seat 12A available on AA200."
+            else:
+                feedback = "Flight AA100 available tomorrow 9am."
         elif tool == "message_user":
             if self._lookup_done:
                 self._user_confirmed = True

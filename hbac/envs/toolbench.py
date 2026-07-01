@@ -15,6 +15,11 @@ class ToolBenchEnv(BaseAgentEnv):
             "answer": "72F",
             "required_tools": ["list_apis", "call_api", "submit"],
         },
+        "toolbench-local-2": {
+            "query": "Call the stocks API for AAPL and submit the price.",
+            "answer": "190",
+            "required_tools": ["list_apis", "call_api", "submit"],
+        },
     }
 
     def __init__(self, budget_tokens: int = 50_000, lambda_penalty: float = 0.001) -> None:
@@ -60,7 +65,10 @@ class ToolBenchEnv(BaseAgentEnv):
             feedback = "Available: weather_api, maps_api"
         elif tool == "call_api":
             self._api_called = True
-            feedback = '{"temperature": "72F", "city": "NYC"}'
+            if self._task_id == "toolbench-local-2":
+                feedback = '{"symbol": "AAPL", "price": "190"}'
+            else:
+                feedback = '{"temperature": "72F", "city": "NYC"}'
         else:
             feedback = f"Unknown tool: {tool}"
 

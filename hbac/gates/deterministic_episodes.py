@@ -58,6 +58,36 @@ DETERMINISTIC_EPISODES: list[DeterministicEpisode] = [
             '{"tool_name": "submit", "tool_input": "confirmed"}',
         ],
     ),
+    DeterministicEpisode(
+        "tau_bench",
+        "tau-local-2",
+        "Use lookup, message_user, and submit for user interactions.",
+        [
+            '{"tool_name": "lookup", "tool_input": "hotel H-4421"}',
+            '{"tool_name": "message_user", "tool_input": "Cancel reservation?"}',
+            '{"tool_name": "submit", "tool_input": "cancelled"}',
+        ],
+    ),
+    DeterministicEpisode(
+        "tau_bench",
+        "tau-local-3",
+        "Use lookup, message_user, and submit for user interactions.",
+        [
+            '{"tool_name": "lookup", "tool_input": "seat AA200"}',
+            '{"tool_name": "message_user", "tool_input": "Upgrade to 12A?"}',
+            '{"tool_name": "submit", "tool_input": "upgraded"}',
+        ],
+    ),
+    DeterministicEpisode(
+        "toolbench",
+        "toolbench-local-2",
+        '{"tool_name": "list_apis"} uses list_apis, call_api, submit for API tasks.',
+        [
+            '{"tool_name": "list_apis", "tool_input": ""}',
+            '{"tool_name": "call_api", "tool_input": "stocks_api AAPL"}',
+            '{"tool_name": "submit", "tool_input": "190"}',
+        ],
+    ),
 ]
 
 

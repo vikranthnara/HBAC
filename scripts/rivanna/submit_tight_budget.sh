@@ -13,6 +13,8 @@ echo "Root: ${HBAC_ROOT}"
 echo "Host: $(hostname)"
 echo "Date: $(date)"
 
+module purge
+module load miniforge/24.3.0-py3.11
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate hbac
 python -c "import hbac; print('preflight OK')"

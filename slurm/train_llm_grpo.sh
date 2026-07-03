@@ -5,7 +5,6 @@
 #SBATCH -c 8
 #SBATCH --mem=64G
 #SBATCH --time=12:00:00
-#SBATCH --constraint=a100_40gb
 #SBATCH --mail-user=eyu8ps@virginia.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
 

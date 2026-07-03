@@ -59,6 +59,24 @@ class BaseRunner(ABC):
 
     def parse_action(self, text: str) -> AgentAction:
         text = text.strip()
+        candidates: list[dict] = []
+        for match in re.finditer(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", text):
+            try:
+                data = json.loads(match.group())
+                if isinstance(data, dict):
+                    candidates.append(data)
+            except json.JSONDecodeError:
+                continue
+        for data in reversed(candidates):
+            tool = data.get("tool_name") or data.get("action")
+            if tool:
+                return AgentAction(
+                    thought=data.get("thought"),
+                    tool_name=tool,
+                    tool_input=data.get("tool_input", data.get("command", data.get("input"))),
+                    stop=bool(data.get("stop", False)),
+                )
+
         json_match = re.search(r"\{[\s\S]*\}", text)
         if json_match:
             try:

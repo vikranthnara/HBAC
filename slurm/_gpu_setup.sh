@@ -5,11 +5,15 @@ HBAC_LLM_MODEL="${HBAC_LLM_MODEL:-Qwen/Qwen2.5-1.5B-Instruct}"
 export HBAC_LLM_PROVIDER=vllm
 export HBAC_LLM_BASE_URL="${HBAC_LLM_BASE_URL:-http://127.0.0.1:8000/v1}"
 export HBAC_LLM_MODEL
+export HF_HOME="${HF_HOME:-${HBAC_ROOT:-/tmp}/.cache/huggingface}"
+export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-${HF_HOME}}"
+mkdir -p "${HF_HOME}"
 
 pip install -q python-dotenv -e ".[gpu]"
 pip install -q "vllm>=0.6.0"
 
 python -c "import vllm; print('vllm', vllm.__version__)"
+nvidia-smi -L 2>/dev/null || echo "WARN: nvidia-smi unavailable"
 
 start_vllm() {
   if curl -sf "${HBAC_LLM_BASE_URL}/models" >/dev/null 2>&1; then

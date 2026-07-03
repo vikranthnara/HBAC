@@ -34,7 +34,7 @@ Respond with JSON only (no markdown):
 Workflow:
 1. list_apis — discover available APIs
 2. call_api — invoke an API with parameters
-3. submit — send the final answer string when you have it
+3. submit — send ONLY the final answer value (e.g. `72F`), no extra words
 """
 
 TAU_SYSTEM_PROMPT = """You are a customer-service agent helping users with bookings.
@@ -44,7 +44,7 @@ Respond with JSON only (no markdown):
 Workflow:
 1. lookup — fetch information (flights, hotels, seats)
 2. message_user — ask the user to confirm
-3. submit — finalize with the confirmation token when the user agrees
+3. submit — finalize with ONLY the confirmation token (e.g. `confirmed`), no extra words
 """
 
 MOCK_SYSTEM_PROMPT = """You are a simple task agent.

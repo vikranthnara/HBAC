@@ -98,7 +98,9 @@ class TauBenchEnv(BaseAgentEnv):
 
     def evaluate(self) -> EvalResult:
         task = self.TASKS[self._task_id]
-        success = self._user_confirmed and self._submitted == task["answer"]
+        success = self._user_confirmed and (
+            self._submitted == task["answer"] or task["answer"] in self._submitted
+        )
         return EvalResult(
             success=success,
             final_output=self._submitted,

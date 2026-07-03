@@ -15,28 +15,17 @@ module load miniforge/24.3.0-py3.11
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate hbac
 
-cd "${HBAC_ROOT:-/standard/liverobotics/hbac}"
+HBAC_ROOT="${HBAC_ROOT:-/standard/liverobotics/hbac}"
+cd "${HBAC_ROOT}"
 
-export HBAC_LLM_PROVIDER=vllm
-export HBAC_LLM_BASE_URL="${HBAC_LLM_BASE_URL:-http://localhost:8000/v1}"
-export HBAC_LLM_MODEL="${HBAC_LLM_MODEL:-meta-llama/Meta-Llama-3.1-8B-Instruct}"
+# shellcheck source=/dev/null
+source slurm/_gpu_setup.sh
+start_vllm
 
-pip install -q -e ".[gpu]"
-
-# Start vLLM if not already running (single-node)
-if ! curl -sf "${HBAC_LLM_BASE_URL}/models" >/dev/null 2>&1; then
-  echo "Starting vLLM server..."
-  python -m vllm.entrypoints.openai.api_server \
-    --model "${HBAC_LLM_MODEL}" \
-    --dtype float16 \
-    --max-model-len 4096 \
-    --port 8000 &
-  sleep 120
-fi
-
+MODEL="${HBAC_LLM_MODEL}"
 python -m hbac.scripts.train_llm_grpo \
   --oracle-path data/oracles \
-  --model meta-llama/Llama-3.1-8B-Instruct \
+  --model "${MODEL}" \
   --lora-rank 16 \
   --grpo-groups 8 \
   --num-batches 10 \

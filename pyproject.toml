@@ -34,6 +34,7 @@ gpu = [
     "trl>=0.9.0",
     "accelerate>=0.30.0",
     "peft>=0.11.0",
+    "vllm>=0.6.0",
 ]
 
 [project.scripts]

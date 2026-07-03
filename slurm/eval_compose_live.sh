@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -J hbac_live_eval
 #SBATCH -p gpu
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:a6000:1
 #SBATCH -c 8
 #SBATCH --mem=64G
 #SBATCH --time=04:00:00

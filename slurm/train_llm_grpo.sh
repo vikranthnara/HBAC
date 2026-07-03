@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -J hbac_llm_grpo
 #SBATCH -p gpu
-#SBATCH --gres=gpu:1
+#SBATCH --gres=gpu:a6000:1
 #SBATCH -c 8
 #SBATCH --mem=64G
 #SBATCH --time=12:00:00

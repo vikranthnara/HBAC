@@ -76,16 +76,21 @@ def rollout_task(
     is_live = llm is not None and type(llm).__name__ != "ScriptedLLM"
     backend = llm or ScriptedLLM(ep.responses)
     prompt = ReActRunner.system_prompt_for_benchmark(task.benchmark)
-    runner = ControllerRunner(
-        backend,
-        controller,
-        RunnerConfig(
-            max_steps=12 if is_live else 10,
-            max_tokens_per_step=512 if is_live else 256,
-            output_dir=Path("/tmp/hbac_batch"),
-        ),
-        stop_threshold=0.99 if is_live else 0.5,
+    runner_cfg = RunnerConfig(
+        max_steps=12 if is_live else 10,
+        max_tokens_per_step=512 if is_live else 256,
+        output_dir=Path("/tmp/hbac_batch"),
     )
+    if is_live:
+        # Live LLM eval: pure ReAct (controller stop head is oracle-trained).
+        runner = ReActRunner(backend, runner_cfg)
+    else:
+        runner = ControllerRunner(
+            backend,
+            controller,
+            runner_cfg,
+            stop_threshold=0.5,
+        )
     traj = runner.run_episode(env, prompt, task.task_id)
     reward = reward_fn.terminal(
         success=traj.success,

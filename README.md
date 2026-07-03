@@ -238,3 +238,20 @@ Shared lab path: `/standard/liverobotics/hbac`. Monitor SUs: `allocations -a lia
 
 Phase 3b LLM GRPO requires GPU extras: `pip install -e ".[gpu]"`.
 
+### Results snapshot (July 2026)
+
+See `results/experiment_summary.json` for the full log. Highlights:
+
+| Eval | HBAC joint | Uniform/CLEAR | Notes |
+|------|------------|---------------|-------|
+| Oracle replay H4 (n=500, tight budget) | **80%** pass@1 | **60%** | Rivanna `compose_tight_bf040_seed47.json` |
+| Live LLM (Qwen2.5-7B, n=60) | 63.3% | 63.3% | Stubs; allocator tie under per-task floor |
+
+```bash
+# Audit budget_fraction in training batches
+python -m hbac.scripts.audit_budget_fraction --batches-path checkpoints/.../batches.jsonl
+
+# Rivanna next steps (tight retrain + live eval + LLM GRPO)
+bash scripts/rivanna/submit_next_steps.sh
+```
+

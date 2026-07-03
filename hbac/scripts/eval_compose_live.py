@@ -23,7 +23,7 @@ from hbac.training.reward import TaskControllerReward
 app = typer.Typer(help="Live-LLM compose eval: uniform vs CLEAR vs HBAC")
 
 STUB_BENCHMARKS = frozenset({"tau_bench", "toolbench", "mock", "swe_bench"})
-LIVE_MIN_PER_TASK = 400
+LIVE_MIN_PER_TASK = 600
 
 
 def _filter_batches(
@@ -32,6 +32,7 @@ def _filter_batches(
     benchmarks: set[str] | None,
     max_batches: int | None,
     live: bool = True,
+    live_min_per_task: int = LIVE_MIN_PER_TASK,
 ) -> list[TrainingBatch]:
     out: list[TrainingBatch] = []
     for batch in batches:
@@ -41,12 +42,14 @@ def _filter_batches(
         oracle_sum = sum(t.oracle_tokens for t in tasks) or 1
         n = len(tasks)
         frac_budget = int(oracle_sum * batch.budget_fraction)
-        floor = n * (LIVE_MIN_PER_TASK if live else 40)
+        full_oracle = batch.oracle_token_sum or 1
+        scaled_train_budget = int(batch.global_budget * (oracle_sum / full_oracle))
+        floor = n * (live_min_per_task if live else 40)
         out.append(
             TrainingBatch(
                 batch_id=batch.batch_id,
                 tasks=tasks,
-                global_budget=max(floor, frac_budget),
+                global_budget=max(floor, scaled_train_budget, frac_budget),
                 oracle_token_sum=oracle_sum,
                 budget_fraction=batch.budget_fraction,
             )
@@ -68,6 +71,7 @@ def _eval_allocator(
     successes: list[bool] = []
     violations = 0
     alloc_vars: list[float] = []
+    tokens_used: list[int] = []
 
     for batch in batches:
         alloc = alloc_fn(batch)
@@ -77,6 +81,7 @@ def _eval_allocator(
             r = rollout_task(task, alloc[task.task_id], l2, reward_fn, llm=llm)
             results.append(r)
             successes.append(r.success)
+            tokens_used.append(r.tokens_used)
             if r.budget_violated:
                 violations += 1
         rewards.append(l1_schema_reward(results, batch, alloc))
@@ -90,6 +95,7 @@ def _eval_allocator(
         "mean_batch_reward": float(np.mean(rewards)) if rewards else 0.0,
         "batch_violation_rate": violations / (n + len(batches)),
         "mean_allocation_variance": float(np.mean(alloc_vars)) if alloc_vars else 0.0,
+        "mean_tokens_used": float(np.mean(tokens_used)) if tokens_used else 0.0,
         "num_tasks": len(successes),
         "num_batches": len(batches),
     }
@@ -103,17 +109,22 @@ def main(
     output: str = typer.Option("results/compose_live.json", help="Metrics output"),
     llm_spec: str = typer.Option("auto", help="LLM spec: auto | provider:model"),
     benchmarks: str = typer.Option(
-        "tau_bench,toolbench,mock",
+        "tau_bench,toolbench,mock,swe_bench",
         help="Comma-separated benchmarks (live eval; LCB needs oracle replay)",
     ),
-    max_batches: int = typer.Option(10, help="Cap batches for API cost control"),
+    max_batches: int = typer.Option(50, help="Cap batches for API cost control (0 = all)"),
+    live_min_per_task: int = typer.Option(
+        LIVE_MIN_PER_TASK, help="Minimum per-task token floor for live rollouts"
+    ),
 ) -> None:
     load_project_env()
     bench_set = {b.strip() for b in benchmarks.split(",") if b.strip()}
+    cap = max_batches if max_batches > 0 else None
     batches = _filter_batches(
         load_batches(Path(batches_path)),
         benchmarks=bench_set,
-        max_batches=max_batches,
+        max_batches=cap,
+        live_min_per_task=live_min_per_task,
     )
     if not batches:
         raise typer.BadParameter(f"No batches with benchmarks {bench_set}")

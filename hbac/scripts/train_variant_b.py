@@ -65,7 +65,8 @@ def main(
 
     batches = generate_curriculum_batches(root, num_batches=num_batches, seed=seed)
     for b in batches:
-        b.global_budget = max(len(b.tasks) * 50, int(b.oracle_token_sum * budget_fraction))
+        floor = len(b.tasks) * 40
+        b.global_budget = max(floor, int(b.oracle_token_sum * budget_fraction))
         b.budget_fraction = budget_fraction
     save_batches(batches, out_dir / "batches.jsonl")
 

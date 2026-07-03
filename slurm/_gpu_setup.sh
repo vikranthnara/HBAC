@@ -1,7 +1,7 @@
 # Shared GPU job setup: conda env + HF/transformers (no vLLM compile on Rivanna).
 # Source from slurm/eval_compose_live.sh and slurm/train_llm_grpo.sh.
 
-HBAC_LLM_MODEL="${HBAC_LLM_MODEL:-Qwen/Qwen2.5-1.5B-Instruct}"
+HBAC_LLM_MODEL="${HBAC_LLM_MODEL:-Qwen/Qwen2.5-7B-Instruct}"
 export HF_HOME="${HF_HOME:-${HBAC_ROOT:-/tmp}/.cache/huggingface}"
 export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-${HF_HOME}}"
 mkdir -p "${HF_HOME}"

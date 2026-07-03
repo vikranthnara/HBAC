@@ -23,19 +23,25 @@ source slurm/_gpu_setup.sh
 export HBAC_LLM_PROVIDER=transformers
 export HBAC_LLM_MODEL="${HBAC_LLM_MODEL}"
 
-BEST_TAG=""
+HBAC_LIVE_TAG="${HBAC_LIVE_TAG:-}"
+HBAC_MAX_BATCHES="${HBAC_MAX_BATCHES:-50}"
+HBAC_LIVE_MIN_PER_TASK="${HBAC_LIVE_MIN_PER_TASK:-600}"
+
+BEST_TAG="${HBAC_LIVE_TAG}"
 BEST_REWARD=-1
-for f in results/compose_tight_bf050_seed45.json \
-         results/compose_tight_bf045_seed46.json \
-         results/compose_tight_bf040_seed47.json; do
-  if [[ -f "${f}" ]]; then
-    R=$(python -c "import json; d=json.load(open('${f}')); print(d['hbac_joint']['mean_batch_reward'])")
-    if python -c "import sys; sys.exit(0 if float('${R}') > ${BEST_REWARD} else 1)"; then
-      BEST_REWARD="${R}"
-      BEST_TAG=$(basename "${f}" | sed 's/compose_tight_//;s/.json//')
+if [[ -z "${BEST_TAG}" ]]; then
+  for f in results/compose_tight_bf040_seed47.json \
+           results/compose_tight_bf045_seed46.json \
+           results/compose_tight_bf050_seed45.json; do
+    if [[ -f "${f}" ]]; then
+      R=$(python -c "import json; d=json.load(open('${f}')); print(d['hbac_joint']['mean_batch_reward'])")
+      if python -c "import sys; sys.exit(0 if float('${R}') > ${BEST_REWARD} else 1)"; then
+        BEST_REWARD="${R}"
+        BEST_TAG=$(basename "${f}" | sed 's/compose_tight_//;s/.json//')
+      fi
     fi
-  fi
-done
+  done
+fi
 
 if [[ -z "${BEST_TAG}" ]]; then
   BEST_TAG="bf040_seed47"
@@ -55,8 +61,9 @@ python -m hbac.scripts.eval_compose_live \
   --l2-checkpoint "${RUN_DIR}/frozen_l2_controller.npz" \
   --l1-checkpoint "${RUN_DIR}/level1_policy.npz" \
   --llm-spec "transformers:${HBAC_LLM_MODEL}" \
-  --benchmarks "tau_bench,toolbench,mock" \
-  --max-batches 15 \
+  --benchmarks "tau_bench,toolbench,mock,swe_bench" \
+  --max-batches "${HBAC_MAX_BATCHES}" \
+  --live-min-per-task "${HBAC_LIVE_MIN_PER_TASK}" \
   --output "results/compose_live_${BEST_TAG}.json"
 
 echo "Live compose eval done $(date)"

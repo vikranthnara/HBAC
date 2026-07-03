@@ -21,13 +21,15 @@ cd "${HBAC_ROOT}"
 source slurm/_gpu_setup.sh
 
 MODEL="${HBAC_LLM_MODEL}"
+export PYTHONUNBUFFERED=1
 python -m hbac.scripts.train_llm_grpo \
   --oracle-path data/oracles \
   --model "${MODEL}" \
   --lora-rank 16 \
-  --grpo-groups 8 \
-  --num-batches 10 \
-  --epochs 2 \
+  --grpo-groups 4 \
+  --num-batches 20 \
+  --epochs 3 \
+  --max-samples 128 \
   --output checkpoints/llm_grpo
 
 echo "LLM GRPO done $(date)"

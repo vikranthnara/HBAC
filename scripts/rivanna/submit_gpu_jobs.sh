@@ -11,7 +11,7 @@ module load miniforge/24.3.0-py3.11
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate hbac
 
-export HBAC_LLM_MODEL="${HBAC_LLM_MODEL:-Qwen/Qwen2.5-1.5B-Instruct}"
+export HBAC_LLM_MODEL="${HBAC_LLM_MODEL:-Qwen/Qwen2.5-7B-Instruct}"
 
 echo "=== HBAC GPU job resubmit ==="
 echo "Root: ${HBAC_ROOT}"

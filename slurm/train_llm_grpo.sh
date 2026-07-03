@@ -19,7 +19,6 @@ cd "${HBAC_ROOT}"
 
 # shellcheck source=/dev/null
 source slurm/_gpu_setup.sh
-start_vllm
 
 MODEL="${HBAC_LLM_MODEL}"
 python -m hbac.scripts.train_llm_grpo \

@@ -7,7 +7,7 @@
 #SBATCH --time=04:00:00
 #SBATCH --mail-user=eyu8ps@virginia.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
-# Live-LLM compose eval on best tight-budget checkpoint (vLLM on-node).
+# Live-LLM compose eval via HuggingFace transformers (no vLLM).
 
 set -euo pipefail
 module purge && module load miniforge/24.3.0-py3.11
@@ -19,7 +19,9 @@ cd "${HBAC_ROOT}"
 
 # shellcheck source=/dev/null
 source slurm/_gpu_setup.sh
-start_vllm
+
+export HBAC_LLM_PROVIDER=transformers
+export HBAC_LLM_MODEL="${HBAC_LLM_MODEL}"
 
 BEST_TAG=""
 BEST_REWARD=-1
@@ -52,7 +54,7 @@ python -m hbac.scripts.eval_compose_live \
   --batches-path "${RUN_DIR}/batches.jsonl" \
   --l2-checkpoint "${RUN_DIR}/frozen_l2_controller.npz" \
   --l1-checkpoint "${RUN_DIR}/level1_policy.npz" \
-  --llm-spec "vllm:${HBAC_LLM_MODEL}" \
+  --llm-spec "transformers:${HBAC_LLM_MODEL}" \
   --benchmarks "tau_bench,toolbench,mock" \
   --max-batches 15 \
   --output "results/compose_live_${BEST_TAG}.json"

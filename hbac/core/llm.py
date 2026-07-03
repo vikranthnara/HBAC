@@ -57,6 +57,8 @@ class LLMBackend(ABC):
             if provider == "vllm":
                 return VLLMBackend(config)
             return OpenAIBackend(config)
+        if provider == "transformers":
+            return TransformersBackend(config)
         if provider == "anthropic":
             return AnthropicBackend(config)
         raise ValueError(f"Unknown LLM provider: {config.provider}")
@@ -194,3 +196,77 @@ class VLLMBackend(OpenAIBackend):
         if not config.base_url:
             config = config.model_copy(update={"base_url": "http://localhost:8000/v1"})
         super().__init__(config)
+
+
+class TransformersBackend(LLMBackend):
+    """Local HuggingFace inference (no vLLM server)."""
+
+    _cache: dict[str, tuple[Any, Any]] = {}
+
+    def __init__(self, config: LLMConfig) -> None:
+        super().__init__(config)
+        import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        model_id = config.model
+        if model_id not in self._cache:
+            tok = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
+            if tok.pad_token is None:
+                tok.pad_token = tok.eos_token
+            dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+            model = AutoModelForCausalLM.from_pretrained(
+                model_id,
+                torch_dtype=dtype,
+                device_map="auto" if torch.cuda.is_available() else None,
+            )
+            self._cache[model_id] = (tok, model)
+        self.tokenizer, self.model = self._cache[model_id]
+
+    def complete(
+        self,
+        messages: list[Message],
+        *,
+        max_tokens: int,
+        stop: list[str] | None = None,
+    ) -> LLMResponse:
+        import torch
+
+        if hasattr(self.tokenizer, "apply_chat_template"):
+            prompt = self.tokenizer.apply_chat_template(
+                messages, tokenize=False, add_generation_prompt=True
+            )
+        else:
+            prompt = "\n".join(f"{m['role']}: {m['content']}" for m in messages)
+
+        start = time.perf_counter()
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
+        gen_kwargs: dict[str, Any] = {
+            "max_new_tokens": max_tokens,
+            "pad_token_id": self.tokenizer.pad_token_id,
+        }
+        if self.config.temperature > 0:
+            gen_kwargs["do_sample"] = True
+            gen_kwargs["temperature"] = self.config.temperature
+        else:
+            gen_kwargs["do_sample"] = False
+
+        with torch.no_grad():
+            output = self.model.generate(**inputs, **gen_kwargs)
+
+        new_ids = output[0][inputs.input_ids.shape[1] :]
+        text = self.tokenizer.decode(new_ids, skip_special_tokens=True)
+        if stop:
+            for s in stop:
+                if s in text:
+                    text = text.split(s, 1)[0]
+
+        latency_ms = (time.perf_counter() - start) * 1000
+        prompt_tokens = int(inputs.input_ids.shape[1])
+        completion_tokens = int(new_ids.shape[0])
+        return LLMResponse(
+            text=text,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            latency_ms=latency_ms,
+            raw={"model": self.config.model},
+        )

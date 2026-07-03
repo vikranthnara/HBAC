@@ -240,12 +240,17 @@ Phase 3b LLM GRPO requires GPU extras: `pip install -e ".[gpu]"`.
 
 ### Results snapshot (July 2026)
 
-See `results/experiment_summary.json` for the full log. Highlights:
+Highlights from Rivanna full-scale runs (`hbac-run-20260630T183941Z`):
 
 | Eval | HBAC joint | Uniform/CLEAR | Notes |
 |------|------------|---------------|-------|
-| Oracle replay H4 (n=500, tight budget) | **80%** pass@1 | **60%** | Rivanna `compose_tight_bf040_seed47.json` |
-| Live LLM (Qwen2.5-7B, n=60) | 63.3% | 63.3% | Stubs; allocator tie under per-task floor |
+| Oracle H4 tight 40% (n=500) | **80%** pass@1, R=0.94 | **60%** | Retrained; budgets now differ by track |
+| Oracle H4 tight 45% (n=500) | **80%** pass@1, R=0.98 | **60%** | `compose_tight_bf045_seed46.json` |
+| Oracle H4 tight 50% (n=500) | **80%** pass@1, R=1.02 | **60%** | CLEAR violations at 50% only |
+| Live LLM 7B (n=300, 40% budget) | 44.3% pass@1, **R=14.7** | 44.3%, R=0.44 / −0.27 | HBAC wins on reward + allocation |
+| LLM GRPO (Phase 3b) | TRL GRPO on Qwen2.5-7B | — | `checkpoints/llm_grpo/20260703T080820Z` |
+| H6 counterfactual credit | Same oracle H4 outcome | — | Credit on/off tie on quick train |
+| H7 KL ablation | PASS | — | `results/kl_ablation_h7.json` |
 
 ```bash
 # Audit budget_fraction in training batches
@@ -253,5 +258,8 @@ python -m hbac.scripts.audit_budget_fraction --batches-path checkpoints/.../batc
 
 # Rivanna next steps (tight retrain + live eval + LLM GRPO)
 bash scripts/rivanna/submit_next_steps.sh
+
+# Live eval on retrained checkpoint
+HBAC_LIVE_TAG=bf040_seed47 HBAC_LIVE_SUFFIX=retrain bash scripts/rivanna/submit_live_eval.sh
 ```
 

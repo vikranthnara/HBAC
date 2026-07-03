@@ -17,6 +17,8 @@ pip install -q python-dotenv -e ".[dev]" 2>/dev/null || pip install -q python-do
 HBAC_ROOT="${HBAC_ROOT:-/standard/liverobotics/hbac}"
 cd "${HBAC_ROOT}"
 
+bash scripts/rivanna/link_latest_checkpoint.sh
+
 # Pick best Stage 3 L1 checkpoint by mean_batch_reward in train_log.jsonl
 BEST_DIR=$(python - <<'PY'
 import json

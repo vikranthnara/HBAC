@@ -13,6 +13,7 @@ module purge && module load miniforge/24.3.0-py3.11
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate hbac
 cd "${HBAC_ROOT:-/standard/liverobotics/hbac}"
+bash scripts/rivanna/link_latest_checkpoint.sh
 
 python -m hbac.scripts.run_phase3 \
   --oracle-path data/oracles \

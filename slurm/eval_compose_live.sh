@@ -28,6 +28,8 @@ HBAC_LIVE_TAG="${HBAC_LIVE_TAG:-}"
 HBAC_MAX_BATCHES="${HBAC_MAX_BATCHES:-50}"
 HBAC_LIVE_MIN_PER_TASK="${HBAC_LIVE_MIN_PER_TASK:-600}"
 
+HBAC_LIVE_SUFFIX="${HBAC_LIVE_SUFFIX:-}"
+
 BEST_TAG="${HBAC_LIVE_TAG}"
 BEST_REWARD=-1
 if [[ -z "${BEST_TAG}" ]]; then
@@ -65,6 +67,6 @@ python -m hbac.scripts.eval_compose_live \
   --benchmarks "tau_bench,toolbench,mock,swe_bench" \
   --max-batches "${HBAC_MAX_BATCHES}" \
   --live-min-per-task "${HBAC_LIVE_MIN_PER_TASK}" \
-  --output "results/compose_live_${BEST_TAG}.json"
+  --output "results/compose_live_${BEST_TAG}${HBAC_LIVE_SUFFIX:+_${HBAC_LIVE_SUFFIX}}.json"
 
 echo "Live compose eval done $(date)"

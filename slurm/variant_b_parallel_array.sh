@@ -19,6 +19,8 @@ pip install -q python-dotenv -e ".[dev]" 2>/dev/null || pip install -q python-do
 HBAC_ROOT="${HBAC_ROOT:-/standard/liverobotics/hbac}"
 cd "${HBAC_ROOT}"
 
+bash scripts/rivanna/link_latest_checkpoint.sh
+
 BUDGETS=(0.90 0.75 0.60)
 SEEDS=(42 43 44)
 BF="${BUDGETS[$SLURM_ARRAY_TASK_ID]}"

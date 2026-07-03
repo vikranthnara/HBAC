@@ -22,6 +22,7 @@ source slurm/_gpu_setup.sh
 
 export HBAC_LLM_PROVIDER=transformers
 export HBAC_LLM_MODEL="${HBAC_LLM_MODEL}"
+export PYTHONUNBUFFERED=1
 
 HBAC_LIVE_TAG="${HBAC_LIVE_TAG:-}"
 HBAC_MAX_BATCHES="${HBAC_MAX_BATCHES:-50}"

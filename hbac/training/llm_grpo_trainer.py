@@ -129,10 +129,15 @@ def _train_trl_grpo(
 
     ref_by_prompt = {p["prompt"]: p for p in subset}
 
-    def reward_fn(samples: list[str], prompts_in=None, **kwargs) -> list[float]:
+    def reward_fn(
+        prompts: list[str],
+        completions: list[str],
+        completion_ids=None,
+        **kwargs,
+    ) -> list[float]:
         out: list[float] = []
-        for i, comp in enumerate(samples):
-            prompt = prompts_in[i] if prompts_in else ""
+        for i, comp in enumerate(completions):
+            prompt = prompts[i] if i < len(prompts) else ""
             ref_row = ref_by_prompt.get(prompt, subset[i % len(subset)])
             out.append(reward_from_completion(comp, ref_row["completion"], ref_row["reward"]))
         return out

@@ -18,6 +18,9 @@ pip install -q python-dotenv -e ".[dev]" 2>/dev/null || pip install -q python-do
 HBAC_ROOT="${HBAC_ROOT:-/standard/liverobotics/hbac}"
 cd "${HBAC_ROOT}"
 
+# Ensure variant_a/latest is a cluster-local relative symlink (not a laptop path).
+bash scripts/rivanna/link_latest_checkpoint.sh
+
 BUDGETS=(0.50 0.45 0.40)
 SEEDS=(45 46 47)
 BF="${BUDGETS[$SLURM_ARRAY_TASK_ID]}"

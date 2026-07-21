@@ -1,0 +1,45 @@
+\section{Counterfactual Credit: Bias and Variance Bounds}
+\label{app:theory}
+
+Let $R(s)$ denote the batch reward under allocation schema $s$.
+For each task $i$ in batch $\mathcal{Q}$ with $n$ tasks, define the leave-one-out counterfactual
+\[
+  \hat{A}_i = R(s) - R^{(-i)}(s),
+\]
+where $R^{(-i)}(s)$ replaces task $i$'s budget with the uniform allocation while reusing cached rollouts for other tasks (implementation: \texttt{hbac/training/credit.py}).
+
+The credit-weighted reward used in GRPO is
+\[
+  \tilde{R}_\beta = (1-\beta)\, R(s) + \beta \cdot \frac{1}{n}\sum_{i=1}^n \bigl(R(s) + \hat{A}_i\bigr).
+\]
+
+\begin{proposition}[Bias bound]
+For fixed batch $\mathcal{Q}$ and deterministic oracle replay,
+\[
+  \bigl|\tilde{R}_\beta - R(s)\bigr| \le \beta \cdot \max_i |\hat{A}_i|.
+\]
+\end{proposition}
+
+\begin{proof}
+Let $\bar{A} = \frac{1}{n}\sum_i \hat{A}_i$. Then
+$\tilde{R}_\beta - R(s) = \beta(\bar{A} + R(s) - R(s)) = \beta \bar{A}$,
+and $|\bar{A}| \le \max_i |\hat{A}_i|$.
+\end{proof}
+
+\begin{proposition}[Variance bound (schema sampling)]
+Let $R(s)$ be random only through schema sampling with variance $\mathrm{Var}(R)$.
+Then
+\[
+  \mathrm{Var}(\tilde{R}_\beta) \le (1-\beta)^2 \mathrm{Var}(R) + \beta^2 \cdot \frac{(\max_i |\hat{A}_i|)^2}{n}.
+\]
+\end{proposition}
+
+\begin{proof}
+Apply $\mathrm{Var}(aX + bY) \le a^2\mathrm{Var}(X) + b^2\mathrm{Var}(Y)$ with
+$a=1-\beta$, $b=\beta$, and bound the credit term by $(\max |\hat{A}_i|)^2/n$.
+\end{proof}
+
+\paragraph{Consistency.}
+As $\beta \to 0$, $\tilde{R}_\beta \to R(s)$: the estimator reduces to standard GRPO batch reward.
+We use $\beta=0.2$ in training (\texttt{phase3\_pipeline.py}); empirical sweep in \texttt{results/credit\_beta\_sweep.json}.
+Counterfactual credit is a \textbf{variance-reduction heuristic}, not an unbiased policy gradient (cf.\ COMA \citep{foerster2018coma}).

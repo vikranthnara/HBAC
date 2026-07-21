@@ -4,6 +4,24 @@
 
 ---
 
+## Research context stores (living documents)
+
+Use these as the primary paper-writing and experiment context. Update them as Rivanna jobs complete and new literature is surveyed.
+
+| Document | Purpose |
+|----------|---------|
+| [Methodology.md](Methodology.md) | Architecture, equations (LaTeX), loss functions, training stages |
+| [Experiments.md](Experiments.md) | Setup, datasets, baselines, metrics, reproducibility commands |
+| [Results.md](Results.md) | Findings, tables, ablations, charts — **canonical empirical record** |
+| [Related Work.md](Related%20Work.md) | Literature survey, comparison matrix, research inbox |
+| [Paper Narrative.md](Paper%20Narrative.md) | Paper-ready claims, abstract bullets, figure list |
+| [Weaknesses.md](Weaknesses.md) | Reviewer weaknesses tracker — mitigations, status |
+| [Research Discovery.md](Research%20Discovery.md) | **Active hypotheses + experiment queue** (engineering focus) |
+
+This file ([Research Plan.md](Research%20Plan.md)) remains the master plan: epistemology (§0), hypotheses (§10), gates (§16), and roadmap.
+
+---
+
 ## 0. Epistemological Framework
 
 Every statement in this document is classified into one of three tiers. **No design choice appears without a Tier A citation or an explicit Tier C hypothesis.**
@@ -358,6 +376,25 @@ Empirical gates enforced by `python -m hbac.scripts.check_go_no_go`. Status: **P
 
 ---
 
+## 17. Empirical Results
+
+**→ Full tables, charts, and ablations: [Results.md](Results.md)**
+
+Summary (July 2026, Rivanna run `/standard/liverobotics/hbac-run-20260630T183941Z`):
+
+| Result | Status |
+|--------|--------|
+| H4 oracle tight budget (80% vs 60% pass@1) | **CONFIRMED** |
+| Live LLM HBAC mean reward 14.7 vs uniform 0.44 | **CONFIRMED** |
+| H6 counterfactual credit | **No effect** at 150-batch scale |
+| H5 draft signals | **No effect** locally |
+| GRPO LoRA v1 | **FAILED** (44.3% → 27.7% pass@1) |
+| GRPO v2 (SFT + tool-aware reward) | **PARTIAL** — HBAC ties base; GRPO = SFT-only |
+
+Refresh: `bash scripts/run_impact_loop.sh` · `results/experiment_summary.json`
+
+---
+
 ## 14. Reproducibility Checklist
 
 ```bash
@@ -380,3 +417,5 @@ pytest tests/test_phase2_acceptance.py -v
 | Jun 2026 | Added Tier A/B/C epistemology; full bibliography; literature gap table; corrected Re-FORC venue/date; operational definition of \(D\); all hypotheses moved to Tier C |
 | Jun 2026 | Phase 2 complete: reference-policy KL, reward sweep, KL ablation H7, merged oracle training, eval harness |
 | Jun 2026 | Added §16 Go/No-Go gates, ToolBench/τ-bench stubs, `check_go_no_go` CLI |
+| Jul 2026 | §17 empirical results (Rivanna H4/live/GRPO); H5 draft features; impact feedback loop |
+| Jul 2026 | Phase 3c DPO pipeline; stub oracles; Paper Narrative.md; uniform LoRA analysis |

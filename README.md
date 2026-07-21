@@ -2,7 +2,7 @@
 
 Hierarchical Budgeted Agent Controller (HBAC): evaluation substrate for SWE-Bench Verified and LiveCodeBench with ReAct, TAB, and Re-FORC baselines.
 
-**Research foundation:** All design choices, citations, and testable hypotheses are documented in [Research Plan.md](Research%20Plan.md) (Tier A/B/C epistemology, bibliography [A1]–[A24], implementation fidelity §9.1). Machine-readable BibTeX: [references.bib](references.bib).
+**Research foundation:** All design choices, citations, and testable hypotheses are documented in [Research Plan.md](research%20docs/Research%20Plan.md) (Tier A/B/C epistemology, bibliography [A1]–[A24], implementation fidelity §9.1). Context stores: [Methodology](research%20docs/Methodology.md) · [Experiments](research%20docs/Experiments.md) · [Results](research%20docs/Results.md) · [Related Work](research%20docs/Related%20Work.md) · [Research Discovery](research%20docs/Research%20Discovery.md) · [Weaknesses](research%20docs/Weaknesses.md). Machine-readable BibTeX: [references.bib](references.bib).
 
 ## Setup
 
@@ -178,7 +178,7 @@ pytest tests/test_phase2_acceptance.py -v
 
 ## Go/No-Go Gates (before Phase 3)
 
-Empirical milestones enforced by automated gates — see [Research Plan.md](Research%20Plan.md) §16.
+Empirical milestones enforced by automated gates — see [Research Plan.md](research%20docs/Research%20Plan.md) §16.
 
 ```bash
 python -m hbac.scripts.check_go_no_go --oracle-path data/oracles
@@ -261,5 +261,22 @@ bash scripts/rivanna/submit_next_steps.sh
 
 # Live eval on retrained checkpoint
 HBAC_LIVE_TAG=bf040_seed47 HBAC_LIVE_SUFFIX=retrain bash scripts/rivanna/submit_live_eval.sh
+
+# Impact feedback loop (validate results → gates → ablations → plan)
+bash scripts/run_impact_loop.sh
+python -m hbac.scripts.impact_feedback_loop plan
+
+# Phase 3b v2: tool-aware SFT+GRPO (recommended after v1 regression)
+bash scripts/rivanna/submit_grpo_v2_wave.sh
+python -m hbac.scripts.eval_grpo_format --lora-path checkpoints/llm_grpo_v2/<run>/model
+
+# Or submit all pending impact steps at once
+bash scripts/rivanna/submit_impact_wave.sh
+
+# On Rivanna login node (after SSH): submit all remaining blockers
+bash scripts/rivanna/execute_blockers.sh
+
+# Pull results back to laptop
+bash scripts/rivanna/pull_from_rivanna.sh && bash scripts/run_impact_loop.sh
 ```
 

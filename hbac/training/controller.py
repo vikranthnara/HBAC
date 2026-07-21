@@ -10,24 +10,39 @@ import numpy as np
 from hbac.core.types import Observation
 
 
-def featurize_observation(obs: Observation) -> np.ndarray:
-    """Cheap state features for Stage-1 stop controller prototyping."""
+def featurize_observation(obs: Observation, input_dim: int = 7) -> np.ndarray:
+    """State features for L2 stop controller; dims 8–9 are draft signals (H5)."""
     history_len = len(obs.history)
     content_len = sum(len(m.get("content", "")) for m in obs.history)
     feedback_len = len(obs.env_feedback)
     tools = len(obs.tools_available)
     budget_frac = obs.remaining_budget / max(obs.remaining_budget + 1, 1)
-    return np.array(
-        [
-            1.0,
-            obs.turn / 100.0,
-            history_len / 50.0,
-            content_len / 10000.0,
-            feedback_len / 5000.0,
-            tools / 10.0,
-            budget_frac,
-        ],
-        dtype=np.float64,
+    base = [
+        1.0,
+        obs.turn / 100.0,
+        history_len / 50.0,
+        content_len / 10000.0,
+        feedback_len / 5000.0,
+        tools / 10.0,
+        budget_frac,
+    ]
+    if input_dim <= 7:
+        return np.array(base[:input_dim], dtype=np.float64)
+
+    ds = obs.draft_signals or {}
+    alpha = float(ds.get("alpha_t", ds.get("acceptance_rate", 0.5)))
+    draft_frac = float(ds.get("draft_token_frac", 0.0))
+    extended = base + [alpha, min(draft_frac, 1.0)]
+    return np.array(extended[:input_dim], dtype=np.float64)
+
+
+def attach_draft_signals(obs: Observation, *, alpha_t: float | None = None) -> Observation:
+    """Inject speculative-decoding draft signals into observation (Research Plan §4, H5)."""
+    turn = max(obs.turn, 1)
+    alpha = alpha_t if alpha_t is not None else min(0.95, 0.4 + 0.1 * (turn % 5))
+    draft_frac = min(0.15, 0.02 * turn)
+    return obs.model_copy(
+        update={"draft_signals": {"alpha_t": alpha, "draft_token_frac": draft_frac}}
     )
 
 
@@ -71,7 +86,7 @@ class MonolithicController:
         return np.tanh(x @ self.w1 + self.b1)
 
     def stop_logit(self, obs: Observation) -> float:
-        h = self._hidden(featurize_observation(obs))
+        h = self._hidden(featurize_observation(obs, self.input_dim))
         return float(h @ self.w2 + self.b2)
 
     def stop_prob(self, obs: Observation) -> float:

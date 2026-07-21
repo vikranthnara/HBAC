@@ -1,4 +1,4 @@
-"""Run feasible Tier-C ablations (H6 counterfactual credit, H7 KL)."""
+"""Run feasible Tier-C ablations (H5 draft, H6 counterfactual credit, H7 KL)."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from pathlib import Path
 
 import typer
 
-app = typer.Typer(help="Tier C ablation runner (H6, H7)")
+app = typer.Typer(help="Tier C ablation runner (H5, H6, H7)")
 
 
 def _run(cmd: list[str]) -> dict:
@@ -26,6 +26,7 @@ def main(
     h6_epochs: int = typer.Option(4, help="Epochs for H6 quick train"),
     skip_h6: bool = typer.Option(False, help="Skip H6 (slow)"),
     skip_h7: bool = typer.Option(False, help="Skip H7 KL ablation"),
+    skip_h5: bool = typer.Option(False, help="Skip H5 draft ablation"),
 ) -> None:
     out_path = Path(output)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -52,6 +53,28 @@ def main(
         report["ablations"]["H7_kl"] = {**r, "output": str(h7_out)}
         if h7_out.exists():
             report["ablations"]["H7_kl"]["results"] = json.loads(h7_out.read_text())
+
+    if not skip_h5:
+        typer.echo("Running H5 draft-signal ablation...")
+        h5_out = out_path.parent / "draft_ablation_h5.json"
+        r = _run(
+            [
+                sys.executable,
+                "-m",
+                "hbac.scripts.ablate_draft",
+                "--oracle-path",
+                oracle_path,
+                "--subset-limit",
+                "80",
+                "--epochs",
+                "8",
+                "--output",
+                str(h5_out),
+            ]
+        )
+        report["ablations"]["H5_draft"] = {**r, "output": str(h5_out)}
+        if h5_out.exists():
+            report["ablations"]["H5_draft"]["results"] = json.loads(h5_out.read_text())
 
     if not skip_h6:
         typer.echo("Running H6 counterfactual credit comparison (quick train)...")
@@ -114,7 +137,7 @@ def main(
         report["ablations"]["H6_counterfactual"] = h6_rows
 
     report["notes"] = {
-        "H5_draft_signals": "Not in featurize_observation yet; deferred.",
+        "H5_draft_signals": "featurize_observation dims 8–9; see ablate_draft.py",
         "H8_curriculum": "Requires full stage-wise retrain; deferred to Rivanna tight retrain.",
     }
     out_path.write_text(json.dumps(report, indent=2), encoding="utf-8")

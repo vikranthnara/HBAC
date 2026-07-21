@@ -22,6 +22,9 @@ def main(
     num_batches: int = typer.Option(30, help="Training batches"),
     epochs: int = typer.Option(8, help="Stage 3 epochs"),
     budget_fraction: float = typer.Option(0.90, help="Initial B_total fraction"),
+    parse_penalty: float = typer.Option(0.0, help="L1 GRPO parse-failure penalty (D16)"),
+    starvation_penalty: float = typer.Option(0.0, help="L1 GRPO starvation penalty (D18)"),
+    hard_min_frac: float = typer.Option(0.15, help="Fair min fraction for starvation metric"),
     skip_stage4: bool = typer.Option(False, help="Skip joint Stage 4 even if L1 wins"),
     skip_variant_a: bool = typer.Option(False, help="Skip Variant A utility track"),
     run_llm_grpo: bool = typer.Option(False, help="Also run Phase 3b LLM GRPO"),
@@ -32,6 +35,9 @@ def main(
         num_batches=num_batches,
         epochs=epochs,
         budget_fraction=budget_fraction,
+        parse_penalty=parse_penalty,
+        starvation_penalty=starvation_penalty,
+        hard_min_frac=hard_min_frac,
     )
     report = run_full_phase3(
         Path(oracle_path),

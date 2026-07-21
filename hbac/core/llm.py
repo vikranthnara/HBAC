@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -193,8 +194,15 @@ class VLLMBackend(OpenAIBackend):
     """OpenAI-compatible local vLLM server."""
 
     def __init__(self, config: LLMConfig) -> None:
+        updates: dict[str, Any] = {}
         if not config.base_url:
-            config = config.model_copy(update={"base_url": "http://localhost:8000/v1"})
+            updates["base_url"] = os.environ.get(
+                "HBAC_LLM_BASE_URL", "http://localhost:8000/v1"
+            )
+        if not config.api_key:
+            updates["api_key"] = os.environ.get("HBAC_LLM_API_KEY", "EMPTY")
+        if updates:
+            config = config.model_copy(update=updates)
         super().__init__(config)
 
 
@@ -209,18 +217,79 @@ class TransformersBackend(LLMBackend):
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
         model_id = config.model
-        if model_id not in self._cache:
+        cache_key = f"{model_id}::lora={config.lora_path or ''}"
+        if cache_key not in self._cache:
             tok = AutoTokenizer.from_pretrained(model_id, trust_remote_code=True)
             if tok.pad_token is None:
                 tok.pad_token = tok.eos_token
             dtype = torch.float16 if torch.cuda.is_available() else torch.float32
-            model = AutoModelForCausalLM.from_pretrained(
-                model_id,
-                torch_dtype=dtype,
-                device_map="auto" if torch.cuda.is_available() else None,
-            )
-            self._cache[model_id] = (tok, model)
-        self.tokenizer, self.model = self._cache[model_id]
+            n_gpu = torch.cuda.device_count() if torch.cuda.is_available() else 0
+            load_kwargs: dict[str, Any] = {
+                "torch_dtype": dtype,
+                "device_map": "auto" if n_gpu else None,
+                "trust_remote_code": True,
+            }
+            # Optional 4-bit load for large MoE models (capability pilots).
+            # Modes (set one via slurm env):
+            #   HBAC_BNB_GPU_ONLY=1     → device_map=auto, no max_memory cap
+            #   HBAC_BNB_CPU_OFFLOAD=1  → allow CPU spill (slower, more reliable)
+            if os.environ.get("HBAC_LOAD_IN_4BIT", "").lower() in {"1", "true", "yes"}:
+                from transformers import BitsAndBytesConfig
+
+                allow_cpu = os.environ.get("HBAC_BNB_CPU_OFFLOAD", "").lower() in {
+                    "1",
+                    "true",
+                    "yes",
+                }
+                gpu_only = os.environ.get("HBAC_BNB_GPU_ONLY", "").lower() in {
+                    "1",
+                    "true",
+                    "yes",
+                }
+                load_kwargs["quantization_config"] = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_compute_dtype=dtype,
+                    bnb_4bit_use_double_quant=True,
+                    bnb_4bit_quant_type="nf4",
+                    llm_int8_enable_fp32_cpu_offload=allow_cpu,
+                )
+                load_kwargs.pop("torch_dtype", None)
+                if n_gpu >= 1 and not gpu_only:
+                    per_gpu = os.environ.get("HBAC_MAX_MEMORY_PER_GPU", "").strip()
+                    if not per_gpu:
+                        per_gpu = {
+                            i: f"{max(int(torch.cuda.get_device_properties(i).total_memory * 0.90 / (1024**3)), 1)}GiB"
+                            for i in range(n_gpu)
+                        }
+                    else:
+                        per_gpu = {i: per_gpu for i in range(n_gpu)}
+                    load_kwargs["max_memory"] = dict(per_gpu)
+                    if allow_cpu:
+                        load_kwargs["max_memory"]["cpu"] = os.environ.get(
+                            "HBAC_MAX_MEMORY_CPU", "128GiB"
+                        )
+                # gpu_only: omit max_memory entirely — accelerate uses full VRAM
+            model = AutoModelForCausalLM.from_pretrained(model_id, **load_kwargs)
+            if config.lora_path:
+                from peft import PeftModel
+
+                model = PeftModel.from_pretrained(model, config.lora_path)
+            self._cache[cache_key] = (tok, model)
+        self.tokenizer, self.model = self._cache[cache_key]
+
+    def _input_device(self):
+        """First device holding model weights (works with device_map='auto')."""
+        if hasattr(self.model, "hf_device_map") and self.model.hf_device_map:
+            first = next(iter(self.model.hf_device_map.values()))
+            if isinstance(first, int):
+                import torch
+
+                return torch.device(f"cuda:{first}")
+            return first
+        try:
+            return self.model.device
+        except Exception:
+            return next(self.model.parameters()).device
 
     def complete(
         self,
@@ -239,7 +308,7 @@ class TransformersBackend(LLMBackend):
             prompt = "\n".join(f"{m['role']}: {m['content']}" for m in messages)
 
         start = time.perf_counter()
-        inputs = self.tokenizer(prompt, return_tensors="pt").to(self.model.device)
+        inputs = self.tokenizer(prompt, return_tensors="pt").to(self._input_device())
         gen_kwargs: dict[str, Any] = {
             "max_new_tokens": max_tokens,
             "pad_token_id": self.tokenizer.pad_token_id,

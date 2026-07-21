@@ -14,6 +14,7 @@ from hbac.gates.deterministic_episodes import DETERMINISTIC_EPISODES, make_env
 from hbac.training.batch_curriculum import BatchTask, TrainingBatch
 from hbac.training.controller import MonolithicController
 from hbac.training.reward import BatchReward, TaskControllerReward
+from hbac.training.tool_reward import extract_tool_json
 
 
 class ScriptedLLM(LLMBackend):
@@ -37,6 +38,9 @@ class TaskRolloutResult:
     budget: int
     reward: float
     budget_violated: bool = False
+    num_steps: int = 0
+    parse_failures: int = 0
+    first_step_valid_json: bool = False
 
 
 @dataclass
@@ -55,6 +59,10 @@ def _episode_for_benchmark(benchmark: str):
 
 
 def make_env_for_task(benchmark: str, task_id: str, budget: int):
+    if benchmark == "swe_bench":
+        from hbac.envs.swe_registry import swe_env_for_task
+
+        return swe_env_for_task(task_id, budget)
     if benchmark == "livecodebench":
         from hbac.envs.livecodebench import LiveCodeBenchEnv
 
@@ -70,6 +78,7 @@ def rollout_task(
     reward_fn: TaskControllerReward,
     *,
     llm: LLMBackend | None = None,
+    use_controller_stop: bool | None = None,
 ) -> TaskRolloutResult:
     ep = _episode_for_benchmark(task.benchmark)
     env = make_env_for_task(task.benchmark, task.task_id, budget)
@@ -81,16 +90,16 @@ def rollout_task(
         max_tokens_per_step=512 if is_live else 256,
         output_dir=Path("/tmp/hbac_batch"),
     )
-    if is_live:
-        # Live LLM eval: pure ReAct (controller stop head is oracle-trained).
-        runner = ReActRunner(backend, runner_cfg)
-    else:
+    use_stop = use_controller_stop if use_controller_stop is not None else not is_live
+    if use_stop:
         runner = ControllerRunner(
             backend,
             controller,
             runner_cfg,
             stop_threshold=0.5,
         )
+    else:
+        runner = ReActRunner(backend, runner_cfg)
     traj = runner.run_episode(env, prompt, task.task_id)
     reward = reward_fn.terminal(
         success=traj.success,
@@ -99,6 +108,14 @@ def rollout_task(
         env_done=traj.success,
     )
     violated = traj.total_tokens > budget
+    parse_failures = sum(
+        1 for step in traj.steps if step.llm_response and extract_tool_json(step.llm_response) is None
+    )
+    first_valid = bool(
+        traj.steps
+        and traj.steps[0].llm_response
+        and extract_tool_json(traj.steps[0].llm_response) is not None
+    )
     return TaskRolloutResult(
         task_id=task.task_id,
         benchmark=task.benchmark,
@@ -107,6 +124,9 @@ def rollout_task(
         budget=budget,
         reward=reward,
         budget_violated=violated,
+        num_steps=len(traj.steps),
+        parse_failures=parse_failures,
+        first_step_valid_json=first_valid,
     )
 
 

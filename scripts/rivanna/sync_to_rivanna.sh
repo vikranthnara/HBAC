@@ -3,13 +3,14 @@
 # Usage (from laptop): bash scripts/rivanna/sync_to_rivanna.sh
 set -euo pipefail
 
-RIVANNA_HOST="${RIVANNA_HOST:-eyu8ps@login.hpc.virginia.edu}"
-REMOTE_ROOT="${REMOTE_ROOT:-/standard/liverobotics/hbac}"
-LOCAL_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=scripts/rivanna/_ssh_env.sh
+source "${SCRIPT_DIR}/_ssh_env.sh"
+LOCAL_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 echo "Syncing ${LOCAL_ROOT} -> ${RIVANNA_HOST}:${REMOTE_ROOT}"
 
-rsync -avz --progress \
+"${RSYNC[@]}" \
   --exclude '.venv' \
   --exclude '__pycache__' \
   --exclude '*.pyc' \
@@ -17,10 +18,7 @@ rsync -avz --progress \
   --exclude '.env' \
   "${LOCAL_ROOT}/" "${RIVANNA_HOST}:${REMOTE_ROOT}/"
 
-rsync -avz --progress \
-  "${LOCAL_ROOT}/data/oracles/" "${RIVANNA_HOST}:${REMOTE_ROOT}/data/oracles/"
+"${RSYNC[@]}" \
+  "${LOCAL_ROOT}/data/oracles/" "${RIVANNA_HOST}:${REMOTE_ROOT}/data/oracles/" 2>/dev/null || true
 
-rsync -avz --progress \
-  "${LOCAL_ROOT}/checkpoints/variant_a/" "${RIVANNA_HOST}:${REMOTE_ROOT}/checkpoints/variant_a/"
-
-echo "Done. SSH: ssh -Y ${RIVANNA_HOST}"
+echo "Done. Remote: ${REMOTE_ROOT}"

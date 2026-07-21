@@ -142,12 +142,15 @@ class TestPhase3:
         if not prompts:
             pytest.skip("no oracle prompts")
         log = train_with_trl(
-            prompts,
+            Path("data/oracles"),
             "gpt2",
             tmp_path / "llm",
             grpo_groups=2,
-            epochs=1,
+            grpo_epochs=1,
+            sft_epochs=1,
             max_samples=2,
+            training_mode="sft_then_grpo",
+            reward_mode="tool_aware",
         )
         assert log
         assert (tmp_path / "llm" / "model" / "adapter_config.json").is_file() or (

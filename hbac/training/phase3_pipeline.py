@@ -37,6 +37,9 @@ class Stage3Config:
     budget_fraction: float = 0.70
     learning_rate: float = 0.02
     use_counterfactual: bool = True
+    parse_penalty: float = 0.0
+    starvation_penalty: float = 0.0
+    hard_min_frac: float = 0.15
     seed: int = 42
 
 
@@ -88,6 +91,10 @@ def evaluate_l1_policy(
     batches: list[TrainingBatch],
     l2: MonolithicController,
     oracle_index: OracleIndex,
+    *,
+    parse_penalty: float = 0.0,
+    starvation_penalty: float = 0.0,
+    hard_min_frac: float = 0.15,
 ) -> EvalMetrics:
     batch_reward_fn = BatchReward()
     policy_rewards: list[float] = []
@@ -114,7 +121,16 @@ def evaluate_l1_policy(
             if r.budget_violated:
                 violations += 1
 
-        policy_rewards.append(l1_schema_reward(results, batch, alloc))
+        policy_rewards.append(
+            l1_schema_reward(
+                results,
+                batch,
+                alloc,
+                parse_penalty=parse_penalty,
+                starvation_penalty=starvation_penalty,
+                hard_min_frac=hard_min_frac,
+            )
+        )
 
         ualloc = Level1Allocator(batch.global_budget).allocate(batch.task_ids)
         uresults = [
@@ -122,7 +138,16 @@ def evaluate_l1_policy(
             for task in batch.tasks
         ]
         uniform_successes.extend(r.success for r in uresults)
-        uniform_rewards.append(l1_schema_reward(uresults, batch, ualloc))
+        uniform_rewards.append(
+            l1_schema_reward(
+                uresults,
+                batch,
+                ualloc,
+                parse_penalty=parse_penalty,
+                starvation_penalty=starvation_penalty,
+                hard_min_frac=hard_min_frac,
+            )
+        )
         _, batch_viol = batch_violation_count(results, global_budget=batch.global_budget)
         violations += batch_viol
 
@@ -184,7 +209,14 @@ def train_stage3_variant_b(
                     rollout_task_with_oracle(task, alloc[task.task_id], l2, oracle_index, reward_fn)
                     for task in batch.tasks
                 ]
-                br = l1_schema_reward(results, batch, alloc)
+                br = l1_schema_reward(
+                    results,
+                    batch,
+                    alloc,
+                    parse_penalty=cfg.parse_penalty,
+                    starvation_penalty=cfg.starvation_penalty,
+                    hard_min_frac=cfg.hard_min_frac,
+                )
                 if cfg.use_counterfactual:
                     from hbac.training.batch_rollout import BatchRolloutResult
 
@@ -205,7 +237,12 @@ def train_stage3_variant_b(
             if stats.skipped:
                 skipped += 1
 
-        metrics = evaluate_l1_policy(l1, val_batches, l2, oracle_index)
+        metrics = evaluate_l1_policy(
+            l1, val_batches, l2, oracle_index,
+            parse_penalty=cfg.parse_penalty,
+            starvation_penalty=cfg.starvation_penalty,
+            hard_min_frac=cfg.hard_min_frac,
+        )
         record = {
             "epoch": epoch + 1,
             "mean_reward": float(np.mean(epoch_rewards)) if epoch_rewards else 0.0,
@@ -218,7 +255,12 @@ def train_stage3_variant_b(
 
     l1.save(out_dir / "level1_policy.npz")
     l2.save(out_dir / "frozen_l2_controller.npz")
-    final_metrics = evaluate_l1_policy(l1, eval_batches, l2, oracle_index)
+    final_metrics = evaluate_l1_policy(
+        l1, eval_batches, l2, oracle_index,
+        parse_penalty=cfg.parse_penalty,
+        starvation_penalty=cfg.starvation_penalty,
+        hard_min_frac=cfg.hard_min_frac,
+    )
     return l1, batches, final_metrics
 
 
@@ -260,7 +302,16 @@ def train_stage4_joint(
                     rollout_task_with_oracle(task, alloc[task.task_id], l2, oracle_index)
                     for task in batch.tasks
                 ]
-                rewards.append(l1_schema_reward(results, batch, alloc))
+                rewards.append(
+                    l1_schema_reward(
+                        results,
+                        batch,
+                        alloc,
+                        parse_penalty=cfg.parse_penalty,
+                        starvation_penalty=cfg.starvation_penalty,
+                        hard_min_frac=cfg.hard_min_frac,
+                    )
+                )
             l1_trainer.update_l1(batch, schema_ids, rewards)
 
             ex = load_stop_examples(find_oracle_paths(oracle_root), limit=50)

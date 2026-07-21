@@ -1,0 +1,66 @@
+\begin{thebibliography}{11}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Hamri and Talgam-Cohen(2026)]{hamri2026zebra}
+Mahmoud Hamri and Inbal Talgam-Cohen.
+\newblock Zebra: Zero-shot budgeted resource allocation for llm orchestration.
+\newblock \emph{arXiv preprint arXiv:2605.20485}, 2026.
+\newblock ICML 2026 AgenticUQ Workshop.
+
+\bibitem[Jain et~al.(2024)]{jain2024livecodebench}
+Naman Jain et~al.
+\newblock Livecodebench: Holistic and contamination free evaluation of llms for code.
+\newblock \emph{arXiv preprint arXiv:2403.07974}, 2024.
+
+\bibitem[Jali et~al.(2026)Jali, Nayak, and Joshi]{jali2026tab}
+Neharika Jali, Anupam Nayak, and Gauri Joshi.
+\newblock Not all turns are equally hard: Adaptive thinking budgets for efficient multi-turn reasoning.
+\newblock \emph{arXiv preprint arXiv:2604.05164}, 2026.
+
+\bibitem[Jimenez et~al.(2024)]{jimenez2024swebench}
+Carlos~E. Jimenez et~al.
+\newblock Swe-bench: Can language models resolve real-world github issues?
+\newblock In \emph{ICLR}, 2024.
+
+\bibitem[Qin et~al.(2023)]{qin2023toolllm}
+Yujia Qin et~al.
+\newblock Toolllm: Facilitating llms to master 16000+ real-world apis.
+\newblock \emph{arXiv preprint arXiv:2307.16789}, 2023.
+
+\bibitem[Schulman et~al.(2017)]{schulman2017ppo}
+John Schulman et~al.
+\newblock Proximal policy optimization algorithms.
+\newblock \emph{arXiv preprint arXiv:1707.06347}, 2017.
+
+\bibitem[Shao et~al.(2024)]{shao2024grpo}
+Zhihong Shao et~al.
+\newblock Deepseekmath: Pushing the limits of mathematical reasoning in open language models.
+\newblock \emph{arXiv preprint arXiv:2402.03300}, 2024.
+
+\bibitem[Wan et~al.(2026)]{wan2026clear}
+Xu~Wan et~al.
+\newblock The shadow price of reasoning: Economic perspective on optimal budget allocation for llms.
+\newblock \emph{arXiv preprint arXiv:2606.03092}, 2026.
+\newblock ICML 2026.
+
+\bibitem[Yao et~al.(2023)]{yao2023react}
+Shunyu Yao et~al.
+\newblock React: Synergizing reasoning and acting in language models.
+\newblock In \emph{ICLR}, 2023.
+
+\bibitem[Yao et~al.(2025)]{yao2025taubench}
+Shunyu Yao et~al.
+\newblock $\tau$-bench: A benchmark for tool-agent-user interaction in real-world domains.
+\newblock In \emph{ICLR}, 2025.
+
+\bibitem[Zabounidis et~al.(2025)]{zabounidis2025reforc}
+Renos Zabounidis et~al.
+\newblock Re-forc: Adaptive reward prediction for efficient chain-of-thought reasoning.
+\newblock \emph{arXiv preprint arXiv:2511.02130}, 2025.
+\newblock NeurIPS 2025 Efficient Reasoning Workshop.
+
+\end{thebibliography}

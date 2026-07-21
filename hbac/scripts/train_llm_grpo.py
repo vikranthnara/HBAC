@@ -1,4 +1,4 @@
-"""Phase 3b: LLM GRPO via TRL with oracle-derived prompts."""
+"""Phase 3b: LLM GRPO via TRL with oracle-derived prompts (legacy CLI — use train_llm_grpo_v2)."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from pathlib import Path
 import typer
 
 from hbac.training.batch_curriculum import generate_curriculum_batches, save_batches
-from hbac.training.llm_grpo_trainer import load_sft_prompts, train_with_trl
+from hbac.training.llm_grpo_trainer import train_with_trl
 
 app = typer.Typer(help="Phase 3b: LLM GRPO (TRL + LoRA)")
 
@@ -17,12 +17,12 @@ app = typer.Typer(help="Phase 3b: LLM GRPO (TRL + LoRA)")
 @app.command()
 def main(
     oracle_path: str = typer.Option("data/oracles", help="Oracle root"),
-    model: str = typer.Option("gpt2", help="HF model id (use Llama-3.1-8B on Rivanna A100)"),
+    model: str = typer.Option("gpt2", help="HF model id"),
     lora_rank: int = typer.Option(16, help="LoRA rank"),
     grpo_groups: int = typer.Option(8, help="GRPO group size"),
     num_batches: int = typer.Option(10, help="Batch curriculum files"),
-    epochs: int = typer.Option(2, help="Training epochs"),
-    max_samples: int = typer.Option(64, help="Max SFT prompts"),
+    epochs: int = typer.Option(2, help="GRPO epochs"),
+    max_samples: int = typer.Option(64, help="Max step records"),
     output: str = typer.Option("checkpoints/llm_grpo", help="Output dir"),
 ) -> None:
     root = Path(oracle_path)
@@ -32,19 +32,19 @@ def main(
 
     batches = generate_curriculum_batches(root, num_batches=num_batches)
     save_batches(batches, out_dir / "batches.jsonl")
-    prompts = load_sft_prompts(root, limit=max_samples)
-    if not prompts:
-        raise typer.Exit("No oracle prompts found for LLM GRPO")
 
-    typer.echo(f"Training on {len(prompts)} oracle prompts, model={model}")
+    typer.echo(f"Training model={model} max_samples={max_samples}")
     log = train_with_trl(
-        prompts,
+        root,
         model,
         out_dir,
         lora_rank=lora_rank,
         grpo_groups=grpo_groups,
-        epochs=epochs,
+        grpo_epochs=epochs,
+        sft_epochs=0,
         max_samples=max_samples,
+        training_mode="grpo_only",
+        reward_mode="overlap",
     )
 
     with (out_dir / "train_log.jsonl").open("w", encoding="utf-8") as f:

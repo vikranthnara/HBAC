@@ -21,6 +21,7 @@ class LLMConfig(BaseSettings):
     base_url: str | None = None
     temperature: float = 0.0
     timeout_seconds: float = 120.0
+    lora_path: str | None = None
 
     @model_validator(mode="after")
     def resolve_provider_and_credentials(self) -> Self:

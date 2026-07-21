@@ -9,6 +9,12 @@ from typing import Any
 from hbac.core.config import SWEBenchConfig
 from hbac.core.env import BaseAgentEnv
 from hbac.core.types import AgentAction, EvalResult, Observation, StepInfo, StepResult, TaskSpec
+from hbac.envs.swe_local import (
+    grade_micro_task,
+    grade_workspace_against_gold,
+    seed_micro_task,
+    seed_workspace_from_gold,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +37,8 @@ class SWEBenchEnv(BaseAgentEnv):
         self._workspace: Path | None = None
         self._patch = ""
         self._step_count = 0
+        self._gold_patch = ""
+        self._local_grade_mode = "gold"  # gold | micro
         self._load_dataset()
 
     def _load_dataset(self) -> None:
@@ -40,8 +48,11 @@ class SWEBenchEnv(BaseAgentEnv):
                     "instance_id": "swe-local-1",
                     "repo": "example/repo",
                     "base_commit": "abc123",
-                    "problem_statement": "Fix the failing test in foo.py",
-                    "patch": "diff --git a/foo.py b/foo.py\n",
+                    "problem_statement": (
+                        "foo.py has a bug: add(a, b) returns a - b instead of a + b. "
+                        "Fix it so add(2, 3) == 5, then submit."
+                    ),
+                    "patch": "",
                 }
             }
             return
@@ -81,6 +92,60 @@ class SWEBenchEnv(BaseAgentEnv):
 
             shutil.rmtree(self._workspace, ignore_errors=True)
         self._workspace = Path(tempfile.mkdtemp(prefix="hbac_swe_"))
+        self._gold_patch = str(self._current.get("patch") or "")
+        self._local_grade_mode = "gold"
+
+        if self.local_mode:
+            seeded_paths: list[str] = []
+            if self._gold_patch.strip():
+                try:
+                    parsed = seed_workspace_from_gold(self._workspace, self._gold_patch)
+                    seeded_paths = parsed.touched_paths
+                    if not seeded_paths and not any(
+                        p for p in self._workspace.rglob("*") if p.is_file() and ".git" not in p.parts
+                    ):
+                        # Gold patch only adds files — still seed micro fallback
+                        raise ValueError("gold patch produced empty before-state")
+                except Exception as exc:
+                    logger.warning("Gold seed failed (%s); using micro task", exc)
+                    self._local_grade_mode = "micro"
+                    parsed = seed_micro_task(self._workspace, task_id)
+                    self._gold_patch = (
+                        "diff --git a/foo.py b/foo.py\n"
+                        "--- a/foo.py\n"
+                        "+++ b/foo.py\n"
+                        "@@ -1,3 +1,3 @@\n"
+                        " def add(a: int, b: int) -> int:\n"
+                        '     """Return the sum of a and b."""\n'
+                        "-    return a - b\n"
+                        "+    return a + b\n"
+                    )
+                    seeded_paths = parsed.touched_paths
+            else:
+                self._local_grade_mode = "micro"
+                parsed = seed_micro_task(self._workspace, task_id)
+                self._gold_patch = (
+                    "diff --git a/foo.py b/foo.py\n"
+                    "--- a/foo.py\n"
+                    "+++ b/foo.py\n"
+                    "@@ -1,3 +1,3 @@\n"
+                    " def add(a: int, b: int) -> int:\n"
+                    '     """Return the sum of a and b."""\n'
+                    "-    return a - b\n"
+                    "+    return a + b\n"
+                )
+                seeded_paths = parsed.touched_paths
+            file_list = ", ".join(seeded_paths[:12]) or "foo.py"
+            boot = (
+                f"Repository workspace ready at {self._workspace}. "
+                f"Seeded files: {file_list}. "
+                "Explore with bash, edit with str_replace_editor, then submit."
+            )
+        else:
+            boot = (
+                f"Repository workspace ready at {self._workspace}. "
+                "Use bash commands to explore and edit files."
+            )
 
         self._task_spec = TaskSpec(
             task_id=task_id,
@@ -91,13 +156,11 @@ class SWEBenchEnv(BaseAgentEnv):
             metadata={
                 "repo": self._current.get("repo"),
                 "base_commit": self._current.get("base_commit"),
+                "local_grade_mode": self._local_grade_mode if self.local_mode else "docker",
             },
         )
         self._append_history("user", self._task_spec.query)
-        return self._build_observation(
-            f"Repository workspace ready at {self._workspace}. "
-            "Use bash commands to explore and edit files."
-        )
+        return self._build_observation(boot)
 
     def _run_bash(self, command: str) -> str:
         if not self._workspace:
@@ -142,14 +205,39 @@ class SWEBenchEnv(BaseAgentEnv):
         if not self._workspace:
             return ""
         try:
+            # Include both tracked diffs and unstaged new files after seed commit.
             result = subprocess.run(
-                ["git", "diff"],
+                ["git", "diff", "HEAD"],
                 cwd=self._workspace,
                 capture_output=True,
                 text=True,
                 timeout=30,
             )
-            return result.stdout or ""
+            diff = result.stdout or ""
+            untracked = subprocess.run(
+                ["git", "ls-files", "--others", "--exclude-standard"],
+                cwd=self._workspace,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+            if untracked.stdout.strip():
+                subprocess.run(
+                    ["git", "add", "-A"],
+                    cwd=self._workspace,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                result = subprocess.run(
+                    ["git", "diff", "--cached", "HEAD"],
+                    cwd=self._workspace,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
+                )
+                diff = result.stdout or diff
+            return diff
         except Exception:
             return self._patch
 
@@ -195,8 +283,18 @@ class SWEBenchEnv(BaseAgentEnv):
         test_output = ""
 
         if self.local_mode:
-            success = bool(patch)
-            test_output = "local_mode: patch present" if patch else "local_mode: no patch"
+            if self._workspace is None:
+                success, test_output = False, "local_mode: no workspace"
+            elif self._local_grade_mode == "micro":
+                success, test_output = grade_micro_task(self._workspace)
+            elif self._gold_patch.strip():
+                success, test_output = grade_workspace_against_gold(
+                    self._workspace, self._gold_patch
+                )
+            else:
+                success, test_output = bool(patch.strip()), (
+                    "local_mode: patch present (no gold)" if patch.strip() else "local_mode: no patch"
+                )
         else:
             try:
                 success, test_output = self._grade_patch(patch)

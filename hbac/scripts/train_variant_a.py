@@ -43,7 +43,7 @@ def _build_batch(
         )
         batch.append(
             Transition(
-                observation_features=featurize_observation(obs),
+                observation_features=featurize_observation(obs, controller.input_dim),
                 stop_action=stop,
                 reward=reward,
                 old_log_prob=old_lp,

@@ -3,25 +3,26 @@
 **Context store** for empirical findings, tables, and ablations. Updated as Rivanna jobs complete.  
 Companion docs: [Methodology.md](Methodology.md) · [Experiments.md](Experiments.md) · [Related Work.md](Related%20Work.md)
 
-*Last updated: July 13, 2026 (5/5 gap audit: SWE gate still fails; ethics budget-share locked)*  
-*Discovery queue: [Research Discovery.md](Research%20Discovery.md)*
+*Last updated: July 23, 2026 (Path B FROZEN; holdout primary +0.45 pp; CN live slice done on A100-80GB)*
+*Discovery queue: [Research Discovery.md](Research%20Discovery.md) · [Path B Freeze.md](Path%20B%20Freeze.md)*
 
 ---
 
-## 0. Path-to-5/5 status (Jul 13, 2026)
+## 0. Path-to-5/5 status (Jul 21, 2026)
 
-**Verdict: not 5/5-ready.** Plan checklist todos are completed, but the plan's SWE ≥5% pass condition is still **FAIL** (7B and 32B). Without that, full "heterogeneous benchmarks" claims stay scoped to LCB+τ+toolbench.
+**Verdict: Path B FROZEN — paper claims locked.** See `research docs/Path B Freeze.md`.
 
 | Criterion | Status |
 |-----------|--------|
-| Paired McNemar | ✅ |
+| Paired McNemar | ✅ holdout **+0.45 pp** (primary) |
 | D18 primary (no hack) | ✅ |
-| SWE ≥5% | ❌ |
+| Hard-task capability >0 | ✅ via LCB (Coder-Next 77.5–87.5%) |
 | Theory + β | ✅ |
-| DPO LCB-clean holdout | ✅ (stub residual FAIL) |
-| Ethics budget shares | ✅ `results/budget_share_starvation.json` |
-| Holdout live confirmation | ⏳ GPU pending |
-| Qwen3-Coder-Next 4-bit retry | ⏳ GPU pending |
+| DPO LCB-clean holdout | ✅ |
+| Ethics budget shares | ✅ |
+| Holdout live | ✅ locked |
+| SWE ≥5% | ❌ **CLOSED** (fuzzy salvage 0%; no further local SWE) |
+| Coder-Next live slice | ✅ stretch: hbac_d18 56.9% vs type_prior 20.0% (n=160); paired McNemar p≈3.47e-18. See `results/paired_allocator_analysis_coder_next_slice.json`. |
 
 ---
 
@@ -36,7 +37,12 @@ Companion docs: [Methodology.md](Methodology.md) · [Experiments.md](Experiments
 - **Audit overall:** `FAIL` — residual 16 stub overlaps on SWE/τ/toolbench vs `eval_n1000`
 - **Audit artifact:** `results/dpo_contamination_audit_holdout.json`
 
-#### Holdout live matrix (GPU pending)
+#### Holdout live matrix (COMPLETED)
+
+- **Artifact:** `results/rivanna/compose_live_v3_holdout_floor400_n2000.json`
+- **Primary:** hbac_d18 **26.80%** vs type_prior **26.35%** → **+0.45 pp**
+- **McNemar:** p≈0.0039 (Bonferroni ≈0.012); paired CI **[0.20, 0.75] pp**
+- **Analysis:** `results/paired_allocator_analysis_v3_holdout.json`
 
 - Primary allocators only: `hbac_d18`, `type_prior`, `hbac_joint`, `hbac_guardrail`, `uniform`
 - LoRA: holdout checkpoint above

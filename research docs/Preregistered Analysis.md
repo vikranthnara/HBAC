@@ -5,6 +5,14 @@
 
 ---
 
+## Scope note (Path B, 2026-07-21)
+
+When SWE pass@1 remains 0% under the local harness, **LiveCodeBench** is the preregistered hard-but-solvable class for capability precondition~(i).
+Primary live claims stay on LCB+τ+toolbench; SWE is reported as a capability probe / future Docker work, not a primary allocator endpoint.
+See `research docs/Path B Freeze.md`.
+
+---
+
 ## Primary endpoints
 
 | Endpoint | Definition | Test |

@@ -201,6 +201,14 @@ def seed_micro_task(workspace: Path, task_id: str = "swe-local-1") -> ParsedPatc
     return parse_unified_diff(gold)
 
 
+def _normalize_src(text: str) -> str:
+    """Normalize whitespace for robust local grading."""
+    lines = [ln.rstrip() for ln in text.replace("\r\n", "\n").split("\n")]
+    while lines and lines[-1] == "":
+        lines.pop()
+    return "\n".join(lines) + ("\n" if text.endswith("\n") else "")
+
+
 def grade_workspace_against_gold(workspace: Path, gold_patch: str) -> tuple[bool, str]:
     """Success iff every gold after-path matches workspace file contents."""
     parsed = parse_unified_diff(gold_patch)
@@ -218,12 +226,61 @@ def grade_workspace_against_gold(workspace: Path, gold_patch: str) -> tuple[bool
             mismatches.append(f"{path}: missing")
             continue
         got = target.read_text(encoding="utf-8")
-        if got != edit.after:
+        if _normalize_src(got) != _normalize_src(edit.after):
             mismatches.append(f"{path}: content mismatch")
 
     if mismatches:
         return False, "local_grade: " + "; ".join(mismatches[:5])
     return True, f"local_grade: matched {len(parsed.files)} file(s)"
+
+
+def grade_workspace_fuzzy(workspace: Path, gold_patch: str) -> tuple[bool, str]:
+    """Success if each gold file contains the lines uniquely added by the gold patch.
+
+    Looser than exact after-state match: allows formatting drift while requiring the
+    semantic fix lines from the gold diff to appear in the workspace.
+    """
+    parsed = parse_unified_diff(gold_patch)
+    if not parsed.files:
+        return False, "local_grade_fuzzy: empty or unparseable gold patch"
+
+    failures: list[str] = []
+    matched = 0
+    for path, edit in parsed.files.items():
+        target = workspace / path
+        if edit.is_deleted:
+            if target.exists():
+                failures.append(f"{path}: expected deleted")
+            else:
+                matched += 1
+            continue
+        if not target.exists():
+            failures.append(f"{path}: missing")
+            continue
+        got = target.read_text(encoding="utf-8")
+        if _normalize_src(got) == _normalize_src(edit.after):
+            matched += 1
+            continue
+        before_lines = {_normalize_src(ln) for ln in edit.before.splitlines() if ln.strip()}
+        after_lines = {_normalize_src(ln) for ln in edit.after.splitlines() if ln.strip()}
+        added = {ln for ln in after_lines - before_lines if ln.strip()}
+        if not added:
+            # Pure deletion / whitespace — fall back to exact
+            if _normalize_src(got) != _normalize_src(edit.after):
+                failures.append(f"{path}: no added lines to fuzzy-match")
+            else:
+                matched += 1
+            continue
+        got_norm = {_normalize_src(ln) for ln in got.splitlines()}
+        missing = [ln for ln in added if ln not in got_norm]
+        if missing:
+            failures.append(f"{path}: missing {len(missing)}/{len(added)} gold lines")
+        else:
+            matched += 1
+
+    if failures:
+        return False, "local_grade_fuzzy: " + "; ".join(failures[:5])
+    return True, f"local_grade_fuzzy: matched {matched} file(s)"
 
 
 def grade_micro_task(workspace: Path) -> tuple[bool, str]:

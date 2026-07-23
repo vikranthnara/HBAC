@@ -75,6 +75,19 @@ def test_swe_local_micro_solvable() -> None:
     assert result.success is True, result.test_output
 
 
+def test_fuzzy_grade_accepts_gold_lines(tmp_path) -> None:
+    from hbac.envs.swe_local import grade_workspace_fuzzy, seed_workspace_from_gold
+
+    ws = tmp_path / "repo"
+    seed_workspace_from_gold(ws, GOLD)
+    # Wrong exact content but includes the gold added line
+    (ws / "pkg" / "util.py").write_text(
+        "def add(a, b):\n    # note\n    return a + b\n", encoding="utf-8"
+    )
+    ok, msg = grade_workspace_fuzzy(ws, GOLD)
+    assert ok, msg
+
+
 def test_swe_gold_instance_solvable() -> None:
     env = SWEBenchEnv(local_mode=True, budget_tokens=2000)
     env._instances["demo__bug-1"] = {

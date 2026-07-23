@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import subprocess
 import tempfile
 from pathlib import Path
@@ -12,6 +13,7 @@ from hbac.core.types import AgentAction, EvalResult, Observation, StepInfo, Step
 from hbac.envs.swe_local import (
     grade_micro_task,
     grade_workspace_against_gold,
+    grade_workspace_fuzzy,
     seed_micro_task,
     seed_workspace_from_gold,
 )
@@ -136,12 +138,32 @@ class SWEBenchEnv(BaseAgentEnv):
                 )
                 seeded_paths = parsed.touched_paths
             file_list = ", ".join(seeded_paths[:12]) or "foo.py"
+            snippets: list[str] = []
+            for rel in seeded_paths[:6]:
+                fp = self._workspace / rel
+                if not fp.is_file():
+                    continue
+                body = fp.read_text(encoding="utf-8")
+                if len(body) > 2500:
+                    body = body[:2500] + "\n...(truncated)"
+                snippets.append(f"----- {rel} -----\n{body}")
+            issue = str(self._current.get("problem_statement") or "").strip()
+            if len(issue) > 1200:
+                issue = issue[:1200] + "\n...(truncated)"
+            local_query = (
+                f"Local SWE task `{task_id}`.\n"
+                f"Workspace cwd is already set; edit relative paths only.\n"
+                f"Issue (may be truncated):\n{issue or '(see seeded files)'}\n\n"
+                f"Seeded files ({file_list}):\n"
+                + ("\n\n".join(snippets) if snippets else "(see workspace)")
+                + "\n\nFix the bug with str_replace_editor, then submit."
+            )
             boot = (
-                f"Repository workspace ready at {self._workspace}. "
-                f"Seeded files: {file_list}. "
-                "Explore with bash, edit with str_replace_editor, then submit."
+                f"Workspace ready at {self._workspace}. "
+                f"Seeded: {file_list}. Tools: bash, str_replace_editor, submit."
             )
         else:
+            local_query = str(self._current["problem_statement"])
             boot = (
                 f"Repository workspace ready at {self._workspace}. "
                 "Use bash commands to explore and edit files."
@@ -150,7 +172,7 @@ class SWEBenchEnv(BaseAgentEnv):
         self._task_spec = TaskSpec(
             task_id=task_id,
             benchmark="swe_bench",
-            query=self._current["problem_statement"],
+            query=local_query,
             budget_tokens=self._budget.budget_tokens,
             tools_available=["bash", "str_replace_editor", "submit"],
             metadata={
@@ -285,16 +307,31 @@ class SWEBenchEnv(BaseAgentEnv):
         if self.local_mode:
             if self._workspace is None:
                 success, test_output = False, "local_mode: no workspace"
-            elif self._local_grade_mode == "micro":
-                success, test_output = grade_micro_task(self._workspace)
-            elif self._gold_patch.strip():
-                success, test_output = grade_workspace_against_gold(
-                    self._workspace, self._gold_patch
-                )
             else:
-                success, test_output = bool(patch.strip()), (
-                    "local_mode: patch present (no gold)" if patch.strip() else "local_mode: no patch"
+                mode = (
+                    os.environ.get("HBAC_SWE_LOCAL_GRADE", self._local_grade_mode or "gold")
+                    .strip()
+                    .lower()
                 )
+                if mode in {"micro"} or self._local_grade_mode == "micro":
+                    success, test_output = grade_micro_task(self._workspace)
+                elif mode in {"fuzzy", "touched"}:
+                    if self._gold_patch.strip():
+                        success, test_output = grade_workspace_fuzzy(
+                            self._workspace, self._gold_patch
+                        )
+                    else:
+                        success, test_output = grade_micro_task(self._workspace)
+                elif self._gold_patch.strip():
+                    success, test_output = grade_workspace_against_gold(
+                        self._workspace, self._gold_patch
+                    )
+                else:
+                    success, test_output = bool(patch.strip()), (
+                        "local_mode: patch present (no gold)"
+                        if patch.strip()
+                        else "local_mode: no patch"
+                    )
         else:
             try:
                 success, test_output = self._grade_patch(patch)

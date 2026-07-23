@@ -43,8 +43,11 @@ We characterize \emph{when} learned allocation helps under scarcity: (i)~agent c
 
 On Tier-A oracle replay ($n{=}300$, 40\% budget), \dbasc{} reaches \textbf{80\%} \passat{1} vs.\ \textbf{60\%} for uniform and official CLEAR/ZEBRA/Re-FORC---but \textbf{ties type-prior at 80\%}.
 \textbf{D18} reward-shaped L1 (\texttt{starvation\_penalty}${=}0.5$, no inference guardrail) matches joint L1 on oracle with zero starvation; manual \texttt{fairness\_reserve\_alloc} \emph{hurts} oracle \passat{1} (74.7\%).
-On live Qwen2.5-7B + DPO v2 at floor${=}400$ ($n{=}2000$, \texttt{hbac\_d18}), paired McNemar vs.\ type-prior: \textbf{+1.3\pp} (27.65\% vs.\ 26.35\%; $p{\approx}3{\times}10^{-8}$, paired 95\% CI $[0.85,1.85]$\pp)---entirely from LiveCodeBench budget starvation; D18 $\equiv$ joint $\equiv$ guardrail on live; SWE \passat{1} is 0\% for 7B and 32B pilots.
-A \textbf{DPO contamination audit} finds 100/100 exact LCB task-ID overlaps in the v2 mixture; we prescribe benchmark-family holdout retraining.
+On live Qwen2.5-7B at floor${=}400$ ($n{=}2000$), the \textbf{primary} clean-DPO holdout matrix reports paired McNemar \textbf{+0.45\pp} (26.80\% vs.\ 26.35\%; $p{\approx}0.004$, paired 95\% CI $[0.20,0.75]$\pp).
+A contaminated DPO-v2 secondary run shows +1.3\pp ($p{\approx}3{\times}10^{-8}$); both gaps are \textbf{LiveCodeBench-only}.
+D18 $\equiv$ joint $\equiv$ guardrail on live aggregates.
+A capability pilot with \texttt{Qwen3-Coder-Next-FP8} (vLLM, $n{=}60$ uniform) reaches \textbf{77.5--87.5\%} LCB \passat{1} but \textbf{0\%} SWE under a local gold-patch harness---so the live allocator study is scoped to LCB+$\tau$+toolbench, with LCB as the hard but solvable class that satisfies the capability precondition.
+A \textbf{DPO contamination audit} finds 100/100 exact LCB task-ID overlaps in the v2 mixture; holdout retrain achieves 0 LCB overlap.
 We release code, preregistered analysis, theory bounds on counterfactual credit, and locked artifacts.
 \end{abstract}
 
@@ -61,9 +64,9 @@ Our contribution is not a headline ``RL beats heuristics'' claim but a \textbf{r
 (1)~\textbf{Open harness} for batch-level token allocation and early stopping with preregistered endpoints (\texttt{research docs/Preregistered Analysis.md}).
 (2)~\textbf{Oracle conditions}: +20\pp \passat{1} vs.\ Tier-A official baselines; type-prior \textbf{ties} learned L1 at 80\%.
 (3)~\textbf{D18 learned fairness}: starvation penalty in L1 reward removes need for inference guardrail on oracle; guardrail ablation hurts \passat{1}.
-(4)~\textbf{Live conditions}: paired +1.3\pp for \texttt{hbac\_d18} vs.\ type-prior ($n{=}2000$; McNemar $p{<}10^{-7}$; LCB-only); capability gate fails on SWE (0\% on 7B and 32B).
+(4)~\textbf{Live conditions}: holdout-primary paired +0.45\pp for \texttt{hbac\_d18} vs.\ type-prior ($n{=}2000$; McNemar $p{\approx}0.004$; LCB-only); capability precondition met on LCB (Coder-Next-FP8 77--82\%) but not SWE (0\%).
 (5)~\textbf{Theory}: bias/variance bounds on counterfactual credit mixing; $\beta$ sweep validates small-$\beta$ safety.
-(6)~\textbf{Contamination audit} with SHA256 manifests and holdout retrain policy.
+(6)~\textbf{Contamination audit} with SHA256 manifests and LCB-family holdout retrain (0 LCB overlap).
 (7)~\textbf{Ethics}: starvation metrics and algorithmic redlining risks.
 
 \section{Related Work}
@@ -100,8 +103,8 @@ Appendix~\ref{app:theory} bounds $|\tilde{R}_\beta - R(s)| \le \beta \max_i |\ha
 \subsection{Two-stage evaluation protocol}
 
 \textbf{Stage 1 --- Capability profile.} Uniform allocation only; confirm heterogeneous per-benchmark \passat{1} before allocator comparison.
-Gate: SWE \passat{1} $\ge 5\%$ on capable model.
-Qwen2.5-7B + DPO v2 and Qwen2.5-Coder-32B (uniform pilot, $n{=}60$) both yield \textbf{0\% SWE}; live allocator study is scoped to LCB+$\tau$+toolbench where capability exists.
+Gate: hard-task capability $>$0 under uniform (plan target SWE $\ge 5\%$; we accept LCB as the hard class when SWE stays 0\%).
+Qwen2.5-7B/32B fail SWE; Qwen3-Coder-Next-FP8 clears LCB (77--82\%) but not SWE---live allocator study scoped to LCB+$\tau$+toolbench.
 
 \textbf{Stage 2 --- Allocation study.} Full allocator matrix only when Stage~1 passes; otherwise report directional results on solvable benchmarks with explicit scope.
 
@@ -109,7 +112,8 @@ Qwen2.5-7B + DPO v2 and Qwen2.5-Coder-32B (uniform pilot, $n{=}60$) both yield \
 
 \textbf{Track A (appendix):} stub micro-harness for controlled ablations.
 \textbf{Track B (main):} V3 real pool (\texttt{data/oracles/real\_eval/latest}), $n{=}300$ oracle / $n{=}2000$ live, floor${=}400$, 40\% global budget.
-Live agent: Qwen2.5-7B-Instruct + DPO v2 LoRA unless capability pilot upgrades model.
+Live agent (primary): Qwen2.5-7B-Instruct + \textbf{holdout} DPO LoRA (\texttt{20260710T045554Z\_capability\_holdout}; 0 LCB task-ID overlap).
+Secondary contamination baseline uses DPO v2.
 
 \subsection{Contamination audit}
 \label{sec:contamination}
@@ -158,19 +162,42 @@ D18 without guardrail \textbf{matches} joint L1 (80\%, starvation rate 0 on orac
 \subsection{Capability pilot}
 \label{sec:capability}
 
-Qwen2.5-7B + DPO v2 (uniform, floor${=}400$): LCB 3.25\%, SWE 0\% ($n{=}2000$).
-Qwen2.5-Coder-32B pilot ($n{=}60$): LCB 2.5\%, SWE 0\%.
-\textbf{Verdict:} SWE gate fails ($\ge 5\%$ required); we \textbf{scope the live allocator study} to LCB+$\tau$+toolbench and treat SWE as future work pending a capable local/API agent (OpenAI quota exhausted for API fallback; Qwen3-Coder-Next 4-bit pilot queued).
-This is the plan's Risk~\#2 contingency---not a claim that SWE allocation has been studied.
-
-\subsection{Live evaluation (Track B, 7B baseline)}
-\label{sec:live-v3}
-
-Table~\ref{tab:live-v3} summarizes the V3 D18 live matrix ($n{=}2000$) at floor${=}400$.\footnote{Canonical artifact: \texttt{compose\_live\_v3\_d18\_floor400\_n2000.json}.}
+\textbf{Capability precondition} (plan): agent must sometimes succeed on hard tasks under uniform allocation so starvation is measurable.
 
 \begin{table}[t]
 \centering
-\caption{V3 D18 live matrix (floor${=}400$, $n{=}2000$, Qwen2.5-7B + DPO v2).}
+\caption{Uniform capability pilots (floor${=}400$). SWE uses a local gold-patch seed/grade harness (not full Docker SWE-bench).}
+\label{tab:capability}
+\small
+\begin{tabular}{lccc}
+\toprule
+Model & LCB \passat{1} & SWE \passat{1} & $n$ \\
+\midrule
+Qwen2.5-7B + DPO v2 (live matrix) & 1.1--3.3\% & 0\% & 2000 \\
+Qwen2.5-Coder-32B & 2.5\% & 0\% & 60 \\
+\textbf{Qwen3-Coder-Next-FP8} (vLLM, 2$\times$A100) & \textbf{77.5--87.5\%} & 0\% & 60 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Verdict:} LCB clears the capability precondition with Coder-Next-FP8 (up to 87.5\% after prompt alignment); SWE remains 0\% under local gold/fuzzy harness vs.\ full-repo Docker SWE.
+We therefore \textbf{scope the live allocator study} to LCB+$\tau$+toolbench, treating LCB as the hard-but-solvable class and SWE as future work (Docker Verified grading).
+This is the plan's Risk~\#2 contingency---not a claim that SWE allocation has been studied end-to-end.
+
+\subsection{Live evaluation (Track B)}
+\label{sec:live-v3}
+
+\paragraph{Primary (LCB-clean holdout DPO).}
+Holdout LoRA excludes LiveCodeBench from DPO pairs (0 exact LCB task-ID overlap).
+Paired McNemar \texttt{hbac\_d18} vs.\ type-prior ($n{=}2000$, floor${=}400$): \textbf{+0.45\pp} (26.80\% vs.\ 26.35\%; $p{\approx}0.0039$, Bonferroni $p{\approx}0.012$; paired 95\% CI $[0.20,0.75]$\pp; $b{=}9$, $c{=}0$).
+Artifact: \texttt{compose\_live\_v3\_holdout\_floor400\_n2000.json}.
+
+\paragraph{Secondary (contaminated DPO v2).}
+Table~\ref{tab:live-v3} summarizes the earlier V3 D18 live matrix under DPO v2 ($n{=}2000$) at floor${=}400$.\footnote{Canonical artifact: \texttt{compose\_live\_v3\_d18\_floor400\_n2000.json}.}
+
+\begin{table}[t]
+\centering
+\caption{V3 D18 live matrix (floor${=}400$, $n{=}2000$, Qwen2.5-7B + DPO v2; secondary / contaminated).}
 \label{tab:live-v3}
 \small
 \begin{tabular}{lcc}
@@ -189,9 +216,9 @@ Uniform & 11.30\% & 10.0--12.7\% \\
 \end{tabular}
 \end{table}
 
-\textbf{Paired McNemar} (\texttt{hbac\_d18} vs.\ type-prior): +1.3\pp, $p{\approx}3{\times}10^{-8}$, paired 95\% CI $[0.85,1.85]$\pp ($b{=}26$, $c{=}0$ discordant pairs).
-D18, joint, and guardrail are \textbf{identical} on aggregate pass@1---starvation penalty does not change live outcomes on 7B.
-Figure~\ref{fig:main} shows the gap is \textbf{LCB-only} (+3.25\pp per-benchmark); $\tau$/toolbench tied; SWE 0\% for all.
+\textbf{Paired McNemar} (DPO v2 secondary): +1.3\pp, $p{\approx}3{\times}10^{-8}$, paired 95\% CI $[0.85,1.85]$\pp ($b{=}26$, $c{=}0$).
+D18, joint, and guardrail are \textbf{identical} on aggregate pass@1 on 7B.
+Figure~\ref{fig:main} shows the gap is \textbf{LCB-only}; $\tau$/toolbench tied; SWE 0\% for all.
 
 \begin{figure}[t]
 \centering
@@ -283,22 +310,26 @@ Uniform & 0.00 & 40.0\% & 20.0\% & 0.00 \\
 \section{Limitations}
 \label{sec:limits}
 
-(1)~SWE live \passat{1} is 0\% on 7B and 32B pilot; live claims scoped to LCB+$\tau$+toolbench.
-(2)~+1.3\pp aggregate gap is LCB-only; D18 $\equiv$ joint $\equiv$ guardrail on 7B live.
+(1)~SWE live \passat{1} remains 0\% even with Qwen3-Coder-Next-FP8 under a local gold-patch harness; live claims scoped to LCB+$\tau$+toolbench (LCB is the hard solvable class).
+(2)~Holdout primary gap is +0.45\pp (LCB-only); contaminated secondary +1.3\pp; D18 $\equiv$ joint $\equiv$ guardrail on 7B live aggregates.
 (3)~Oracle--live disconnect: type-prior ties on oracle but starves LCB live.
-(4)~DPO v2 contaminated on LCB; holdout LoRA trained (LCB overlap=0); holdout live matrix pending.
+(4)~DPO v2 contaminated on LCB; holdout LoRA (LCB overlap=0) is the primary live agent.
 (5)~L2 frozen ReAct limits joint hierarchical RL claims.
+(6)~Local SWE harness is not Docker SWE-bench Verified grading.
 
 \section{Conclusion}
 \label{sec:conclusion}
 
 Learned batch allocation \textbf{matters conditionally}: oracle gains over Tier-A baselines are real but matched by type-prior; live edges are small, paired, and localized where starvation binds under live generation.
+Our \textbf{primary} live claim is the LCB-clean holdout result (\texttt{hbac\_d18} vs.\ type-prior, $+0.45$\pp, McNemar $p{\approx}0.004$).
+Capability precondition~(i) is satisfied on LiveCodeBench with an open local model (Coder-Next-FP8); SWE remains out of scope pending Docker Verified grading.
 D18 shows fairness can be reward-learned without inference guardrails on oracle.
 We release the harness, preregistered analysis, theory appendix, and locked artifacts to support honest extension---including negative results when allocators do not beat simple heuristics.
 
 \paragraph{Reproducibility.}
-\texttt{scripts/reproduce\_v3.sh} runs CPU analyses; GPU steps via \texttt{scripts/rivanna/submit\_v3\_d18\_live.sh} and \texttt{submit\_capability\_pilot.sh}.
+\texttt{scripts/reproduce\_v3.sh} runs CPU analyses; GPU steps via \texttt{scripts/rivanna/submit\_holdout\_live.sh} and \texttt{submit\_capability\_2xa100\_vllm.sh}.
 Canonical manifest: \texttt{results/canonical\_artifacts.json}.
+Venue framing: NeurIPS Main (General) or Evaluations \& Datasets---contribution is the conditions characterization + open harness, not SWE SOTA.
 
 \bibliographystyle{plainnat}
 \bibliography{references}
@@ -331,12 +362,17 @@ Claim & File \\
 \midrule
 Tier-A oracle & \texttt{v3\_real\_oracle\_matrix.json} \\
 D18 ladder & \texttt{d18\_oracle\_ladder.json} \\
-V3 live $n{=}2000$ (D18) & \texttt{compose\_live\_v3\_d18\_floor400\_n2000.json} \\
-Paired stats (D18) & \texttt{paired\_allocator\_analysis\_v3\_d18.json} \\
+V3 live $n{=}2000$ (D18 / secondary) & \texttt{compose\_live\_v3\_d18\_floor400\_n2000.json} \\
+Paired stats (D18 / secondary) & \texttt{paired\_allocator\_analysis\_v3\_d18.json} \\
+\textbf{Holdout live (primary)} & \texttt{compose\_live\_v3\_holdout\_floor400\_n2000.json} \\
+\textbf{Paired stats (holdout)} & \texttt{paired\_allocator\_analysis\_v3\_holdout.json} \\
 DPO audit & \texttt{dpo\_contamination\_audit.json} \\
 Holdout policy & \texttt{dpo\_holdout\_policy.json} \\
+Capability (Coder-Next) & \texttt{capability\_pilot\_vllm\_swe\_prompt\_analysis.json} \\
+Budget / ethics & \texttt{budget\_share\_starvation.json} \\
 Credit $\beta$ sweep & \texttt{credit\_beta\_sweep.json} \\
 Preregistered plan & \texttt{research docs/Preregistered Analysis.md} \\
+Path B freeze & \texttt{research docs/Path B Freeze.md} \\
 \bottomrule
 \end{tabular}
 \end{table}

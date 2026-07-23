@@ -3,17 +3,19 @@ from __future__ import annotations
 from hbac.baselines.base import BaseRunner, RunnerConfig
 from hbac.core.types import Observation
 
-SWE_SYSTEM_PROMPT = """You are a software engineering agent fixing a GitHub issue in a repository.
-You interact via bash commands in a Docker container at /testbed.
+SWE_SYSTEM_PROMPT = """You are a software engineering agent fixing a bug in a local git workspace.
+Respond with JSON only (no markdown fences):
+{"thought": "...", "tool_name": "bash|str_replace_editor|submit", "tool_input": "..."}
 
-Respond with JSON:
-{"thought": "...", "tool_name": "bash|submit", "tool_input": "command or empty for submit"}
+Tools:
+- bash: run a shell command (string). Use ls/cat/grep to inspect files in the workspace cwd.
+- str_replace_editor: JSON object {"path": "relative/path.py", "old_str": "...", "new_str": "..."}.
+- submit: finish the episode (tool_input may be empty).
 
 Rules:
-- Explore the codebase with bash (ls, grep, find, cat).
-- Edit files with sed or heredocs.
-- Run relevant tests before submitting.
-- When done, use tool_name "submit" with stop implied.
+- Edit with str_replace_editor (preferred) or bash; stay in the provided workspace cwd (no Docker paths).
+- Make the smallest correct fix, then submit.
+- Always emit a single JSON object matching the schema above.
 """
 
 LCB_SYSTEM_PROMPT = """You are a coding agent solving algorithmic problems.

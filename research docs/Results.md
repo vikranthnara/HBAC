@@ -3,14 +3,14 @@
 **Context store** for empirical findings, tables, and ablations. Updated as Rivanna jobs complete.  
 Companion docs: [Methodology.md](Methodology.md) · [Experiments.md](Experiments.md) · [Related Work.md](Related%20Work.md)
 
-*Last updated: July 23, 2026 (Path B FROZEN; holdout primary +0.45 pp; CN live slice done on A100-80GB)*
+*Last updated: July 23, 2026 (Path B FROZEN; CN stretch in paper; packaging checklist in Path B Freeze)*
 *Discovery queue: [Research Discovery.md](Research%20Discovery.md) · [Path B Freeze.md](Path%20B%20Freeze.md)*
 
 ---
 
-## 0. Path-to-5/5 status (Jul 21, 2026)
+## 0. Path-to-5/5 status (Jul 23, 2026)
 
-**Verdict: Path B FROZEN — paper claims locked.** See `research docs/Path B Freeze.md`.
+**Verdict: Path B FROZEN — paper claims locked; CN stretch integrated.** See `research docs/Path B Freeze.md`.
 
 | Criterion | Status |
 |-----------|--------|
@@ -22,7 +22,8 @@ Companion docs: [Methodology.md](Methodology.md) · [Experiments.md](Experiments
 | Ethics budget shares | ✅ |
 | Holdout live | ✅ locked |
 | SWE ≥5% | ❌ **CLOSED** (fuzzy salvage 0%; no further local SWE) |
-| Coder-Next live slice | ✅ stretch: hbac_d18 56.9% vs type_prior 20.0% (n=160); paired McNemar p≈3.47e-18. See `results/paired_allocator_analysis_coder_next_slice.json`. |
+| Coder-Next live slice | ✅ stretch in paper: hbac_d18 56.9% vs type_prior 20.0% (n=160); +36.9 pp; p≈3.47e-18 |
+| Canonical artifacts | ✅ Path B lock in `results/canonical_artifacts.json` |
 
 ---
 

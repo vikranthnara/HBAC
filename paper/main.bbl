@@ -1,9 +1,14 @@
-\begin{thebibliography}{11}
+\begin{thebibliography}{12}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Foerster et~al.(2018)]{foerster2018coma}
+Jakob Foerster et~al.
+\newblock Counterfactual multi-agent policy gradients.
+\newblock In \emph{AAAI}, 2018.
 
 \bibitem[Hamri and Talgam-Cohen(2026)]{hamri2026zebra}
 Mahmoud Hamri and Inbal Talgam-Cohen.

@@ -47,6 +47,7 @@ On live Qwen2.5-7B at floor${=}400$ ($n{=}2000$), the \textbf{primary} clean-DPO
 A contaminated DPO-v2 secondary run shows +1.3\pp ($p{\approx}3{\times}10^{-8}$); both gaps are \textbf{LiveCodeBench-only}.
 D18 $\equiv$ joint $\equiv$ guardrail on live aggregates.
 A capability pilot with \texttt{Qwen3-Coder-Next-FP8} (vLLM, $n{=}60$ uniform) reaches \textbf{77.5--87.5\%} LCB \passat{1} but \textbf{0\%} SWE under a local gold-patch harness---so the live allocator study is scoped to LCB+$\tau$+toolbench, with LCB as the hard but solvable class that satisfies the capability precondition.
+A stretch Coder-Next live slice ($n{=}160$, no SWE) shows the starvation mechanism at high capability: \texttt{hbac\_d18} \textbf{56.9\%} vs.\ type-prior \textbf{20.0\%} (+36.9\pp; McNemar $p{\ll}10^{-15}$), again LCB-localized.
 A \textbf{DPO contamination audit} finds 100/100 exact LCB task-ID overlaps in the v2 mixture; holdout retrain achieves 0 LCB overlap.
 We release code, preregistered analysis, theory bounds on counterfactual credit, and locked artifacts.
 \end{abstract}
@@ -64,7 +65,7 @@ Our contribution is not a headline ``RL beats heuristics'' claim but a \textbf{r
 (1)~\textbf{Open harness} for batch-level token allocation and early stopping with preregistered endpoints (\texttt{research docs/Preregistered Analysis.md}).
 (2)~\textbf{Oracle conditions}: +20\pp \passat{1} vs.\ Tier-A official baselines; type-prior \textbf{ties} learned L1 at 80\%.
 (3)~\textbf{D18 learned fairness}: starvation penalty in L1 reward removes need for inference guardrail on oracle; guardrail ablation hurts \passat{1}.
-(4)~\textbf{Live conditions}: holdout-primary paired +0.45\pp for \texttt{hbac\_d18} vs.\ type-prior ($n{=}2000$; McNemar $p{\approx}0.004$; LCB-only); capability precondition met on LCB (Coder-Next-FP8 77--82\%) but not SWE (0\%).
+(4)~\textbf{Live conditions}: holdout-primary paired +0.45\pp for \texttt{hbac\_d18} vs.\ type-prior ($n{=}2000$; McNemar $p{\approx}0.004$; LCB-only); capability precondition met on LCB (Coder-Next-FP8 77.5--87.5\%) but not SWE (0\%); stretch Coder-Next slice amplifies the same LCB starvation gap (+36.9\pp, $n{=}160$).
 (5)~\textbf{Theory}: bias/variance bounds on counterfactual credit mixing; $\beta$ sweep validates small-$\beta$ safety.
 (6)~\textbf{Contamination audit} with SHA256 manifests and LCB-family holdout retrain (0 LCB overlap).
 (7)~\textbf{Ethics}: starvation metrics and algorithmic redlining risks.
@@ -104,7 +105,7 @@ Appendix~\ref{app:theory} bounds $|\tilde{R}_\beta - R(s)| \le \beta \max_i |\ha
 
 \textbf{Stage 1 --- Capability profile.} Uniform allocation only; confirm heterogeneous per-benchmark \passat{1} before allocator comparison.
 Gate: hard-task capability $>$0 under uniform (plan target SWE $\ge 5\%$; we accept LCB as the hard class when SWE stays 0\%).
-Qwen2.5-7B/32B fail SWE; Qwen3-Coder-Next-FP8 clears LCB (77--82\%) but not SWE---live allocator study scoped to LCB+$\tau$+toolbench.
+Qwen2.5-7B/32B fail SWE; Qwen3-Coder-Next-FP8 clears LCB (77.5--87.5\%) but not SWE---live allocator study scoped to LCB+$\tau$+toolbench.
 
 \textbf{Stage 2 --- Allocation study.} Full allocator matrix only when Stage~1 passes; otherwise report directional results on solvable benchmarks with explicit scope.
 
@@ -239,6 +240,32 @@ Figure~\ref{fig:main} shows the gap is \textbf{LCB-only}; $\tau$/toolbench tied;
 \label{fig:main}
 \end{figure}
 
+\paragraph{Stretch: capable-model live slice (Coder-Next-FP8).}
+\label{sec:cn-slice}
+To test whether the starvation mechanism \emph{scales} when hard-task success is no longer rare, we re-run \texttt{hbac\_d18} vs.\ type-prior on \textbf{Qwen3-Coder-Next-FP8} via vLLM (2$\times$A100-80GB; floor${=}400$; max 20 batches; benchmarks LCB+$\tau$+toolbench; \textbf{no SWE}).
+Table~\ref{tab:cn-slice} reports $n{=}160$ paired tasks.
+
+\begin{table}[t]
+\centering
+\caption{Coder-Next-FP8 live slice (no SWE; floor${=}400$, $n{=}160$). Stretch evidence under high LCB capability.}
+\label{tab:cn-slice}
+\small
+\begin{tabular}{lcccc}
+\toprule
+Allocator & Aggregate & LCB ($n{=}80$) & $\tau$ ($n{=}40$) & ToolBench ($n{=}40$) \\
+\midrule
+\textbf{HBAC D18} & \textbf{56.9\%} & \textbf{73.8\%} & 30.0\% & 50.0\% \\
+Type-prior & 20.0\% & 0.0\% & 30.0\% & 50.0\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Paired McNemar: $\Delta{=}{+}36.9$\pp (56.9\% vs.\ 20.0\%; $p{\approx}3.5{\times}10^{-18}$; paired 95\% CI $[29.4,44.4]$\pp; $b{=}59$, $c{=}0$).
+The gap is again \textbf{entirely LCB}: type-prior zeros LCB budget (0\% LCB \passat{1}); D18 retains residual LCB share (73.8\%).
+$\tau$ and ToolBench tie---allocation signal appears only where starvation binds \emph{and} the agent can succeed when funded.
+We treat this as \textbf{stretch}, not primary: primary live claims remain the clean-DPO holdout $+0.45$\pp on 7B ($n{=}2000$).
+Artifact: \texttt{paired\_allocator\_analysis\_coder\_next\_slice.json}.
+
 \subsection{Contamination audit results}
 \label{sec:contamination-results}
 
@@ -312,24 +339,27 @@ Uniform & 0.00 & 40.0\% & 20.0\% & 0.00 \\
 
 (1)~SWE live \passat{1} remains 0\% even with Qwen3-Coder-Next-FP8 under a local gold-patch harness; live claims scoped to LCB+$\tau$+toolbench (LCB is the hard solvable class).
 (2)~Holdout primary gap is +0.45\pp (LCB-only); contaminated secondary +1.3\pp; D18 $\equiv$ joint $\equiv$ guardrail on 7B live aggregates.
-(3)~Oracle--live disconnect: type-prior ties on oracle but starves LCB live.
-(4)~DPO v2 contaminated on LCB; holdout LoRA (LCB overlap=0) is the primary live agent.
-(5)~L2 frozen ReAct limits joint hierarchical RL claims.
-(6)~Local SWE harness is not Docker SWE-bench Verified grading.
+(3)~Coder-Next stretch slice ($n{=}160$) is underpowered relative to the $n{=}2000$ primary matrix and excludes SWE by design.
+(4)~Oracle--live disconnect: type-prior ties on oracle but starves LCB live.
+(5)~DPO v2 contaminated on LCB; holdout LoRA (LCB overlap=0) is the primary live agent.
+(6)~L2 frozen ReAct limits joint hierarchical RL claims.
+(7)~Local SWE harness is not Docker SWE-bench Verified grading.
 
 \section{Conclusion}
 \label{sec:conclusion}
 
 Learned batch allocation \textbf{matters conditionally}: oracle gains over Tier-A baselines are real but matched by type-prior; live edges are small, paired, and localized where starvation binds under live generation.
 Our \textbf{primary} live claim is the LCB-clean holdout result (\texttt{hbac\_d18} vs.\ type-prior, $+0.45$\pp, McNemar $p{\approx}0.004$).
-Capability precondition~(i) is satisfied on LiveCodeBench with an open local model (Coder-Next-FP8); SWE remains out of scope pending Docker Verified grading.
+Capability precondition~(i) is satisfied on LiveCodeBench with an open local model (Coder-Next-FP8); a stretch capable-model slice shows the same LCB starvation gap expands when hard tasks are solvable ($+36.9$\pp).
+SWE remains out of scope pending Docker Verified grading.
 D18 shows fairness can be reward-learned without inference guardrails on oracle.
 We release the harness, preregistered analysis, theory appendix, and locked artifacts to support honest extension---including negative results when allocators do not beat simple heuristics.
 
 \paragraph{Reproducibility.}
-\texttt{scripts/reproduce\_v3.sh} runs CPU analyses; GPU steps via \texttt{scripts/rivanna/submit\_holdout\_live.sh} and \texttt{submit\_capability\_2xa100\_vllm.sh}.
-Canonical manifest: \texttt{results/canonical\_artifacts.json}.
-Venue framing: NeurIPS Main (General) or Evaluations \& Datasets---contribution is the conditions characterization + open harness, not SWE SOTA.
+CPU analyses: \texttt{scripts/reproduce\_v3.sh}.
+GPU: \texttt{submit\_holdout\_live.sh}, \texttt{submit\_capability\_2xa100\_vllm.sh}, \texttt{submit\_coder\_next\_live\_80gb.sh} under \texttt{scripts/rivanna/}.
+Manifest: \texttt{results/canonical\_artifacts.json}.
+Venue: NeurIPS Main (General) or Evaluations \& Datasets---conditions characterization + open harness, not SWE SOTA.
 
 \bibliographystyle{plainnat}
 \bibliography{references}
@@ -369,6 +399,7 @@ Paired stats (D18 / secondary) & \texttt{paired\_allocator\_analysis\_v3\_d18.js
 DPO audit & \texttt{dpo\_contamination\_audit.json} \\
 Holdout policy & \texttt{dpo\_holdout\_policy.json} \\
 Capability (Coder-Next) & \texttt{capability\_pilot\_vllm\_swe\_prompt\_analysis.json} \\
+\textbf{CN live slice (stretch)} & \texttt{paired\_allocator\_analysis\_coder\_next\_slice.json} \\
 Budget / ethics & \texttt{budget\_share\_starvation.json} \\
 Credit $\beta$ sweep & \texttt{credit\_beta\_sweep.json} \\
 Preregistered plan & \texttt{research docs/Preregistered Analysis.md} \\
